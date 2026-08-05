@@ -1,0 +1,144 @@
+---
+import Base from '../layouts/Base.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+import PlacementCard from '../components/PlacementCard.astro';
+import VideoTestimonial from '../components/VideoTestimonial.astro';
+import Accreditations from '../components/Accreditations.astro';
+import Gallery from '../components/Gallery.astro';
+import EnquiryCTA from '../components/EnquiryCTA.astro';
+import { placements, videoTestimonials, hiringHospitals, graduation } from '../data/placements';
+import { galleryImages } from '../lib/images';
+
+const placed = placements.filter((p) => p.kind === 'placed');
+const training = placements.filter((p) => p.kind === 'training');
+const pivots = placements.filter((p) => p.from);
+const hasGallery = galleryImages().length > 0;
+---
+
+<Base
+  title="Placements"
+  description="Where Sidhah students work — hospital administration placements at Lakeshore Hospital, Don Bosco Hospital and Najath Hospital in Kochi and Ernakulam."
+>
+  <section class="hex-pattern border-b border-ink-100 bg-brand-50/60">
+    <div class="container-page py-16 sm:py-20">
+      <p class="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Placements</p>
+      <h1 class="mt-3 max-w-3xl text-4xl leading-tight sm:text-5xl">
+        Six months is enough to change what you do for a living
+      </h1>
+      <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-600">
+        Chemistry, Economics, Electronics, teaching — our students arrive from
+        everywhere and leave for hospital departments in and around Kochi. These
+        are people who sat in the same classroom you are considering.
+      </p>
+
+      <dl class="mt-10 grid max-w-2xl grid-cols-2 gap-6 border-t border-ink-200/70 pt-8 sm:grid-cols-3">
+        <div>
+          <dt class="text-xs font-medium text-ink-400">Hospitals hiring</dt>
+          <dd class="mt-1 text-2xl font-extrabold text-ink-900">{hiringHospitals.length}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium text-ink-400">Career switchers</dt>
+          <dd class="mt-1 text-2xl font-extrabold text-ink-900">{pivots.length}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium text-ink-400">Graduating batch</dt>
+          <dd class="mt-1 text-2xl font-extrabold text-brand-600">{graduation.batch}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- Placed -->
+  <section class="container-page py-16 sm:py-20">
+    <SectionHeading
+      eyebrow="Now working"
+      title="Placed in hospital departments"
+      align="left"
+    />
+    <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {placed.map((placement) => <PlacementCard placement={placement} />)}
+    </div>
+  </section>
+
+  <!-- Training -->
+  {
+    training.length > 0 && (
+      <section class="container-page pb-16 sm:pb-20">
+        <SectionHeading
+          eyebrow="In training"
+          title="Currently training in hospitals"
+          description="Trainee placements are where most hospital administration careers begin — supervised time on a real department before a permanent role."
+          align="left"
+        />
+        <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {training.map((placement) => (
+            <PlacementCard placement={placement} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Hospitals -->
+  <section class="bg-ink-50/60 py-16 sm:py-20">
+    <div class="container-page">
+      <SectionHeading
+        eyebrow="Where they went"
+        title="Hospitals that have taken our students"
+      />
+      <ul class="mx-auto mt-12 flex max-w-3xl flex-wrap justify-center gap-3">
+        {
+          hiringHospitals.map((hospital) => (
+            <li class="rounded-2xl border border-ink-100 bg-white px-6 py-4 font-bold text-ink-900 shadow-card">
+              {hospital}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- Video testimonials -->
+  {
+    videoTestimonials.length > 0 && (
+      <section class="container-page py-20 sm:py-24">
+        <SectionHeading
+          eyebrow="In their words"
+          title="Student testimonials"
+          description="Nothing loads from YouTube until you press play."
+        />
+        <div class="mt-14 grid gap-7 lg:grid-cols-2">
+          {videoTestimonials.map((testimonial) => (
+            <VideoTestimonial testimonial={testimonial} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Graduation -->
+  {
+    hasGallery && (
+      <section class="container-page py-20 sm:py-24">
+        <SectionHeading
+          eyebrow={`Batch ${graduation.batch}`}
+          title="Graduation day"
+          description={graduation.caption}
+        />
+        <div class="mt-14">
+          <Gallery alt={`Sidhah ${graduation.title} graduation ceremony, batch ${graduation.batch}`} />
+        </div>
+      </section>
+    )
+  }
+
+  <section class="container-page py-16 sm:py-20">
+    <Accreditations />
+  </section>
+
+  <EnquiryCTA
+    title="Your name could be on this page next year"
+    description="Come to the Infopark campus, meet the faculty who trained the students above, and ask them anything about how placement actually works."
+    message="Hi Sidhah, I saw your placements page. I'd like to know about the next batch and placement support."
+  />
+</Base>

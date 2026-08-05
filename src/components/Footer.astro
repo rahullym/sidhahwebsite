@@ -1,0 +1,94 @@
+---
+import Logo from './Logo.astro';
+import { nav, contact, site } from '../data/site';
+import { courses } from '../data/courses';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="mt-24 bg-ink-950 text-ink-200">
+  <div class="container-page py-16">
+    <div class="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+      <div>
+        <Logo variant="light" />
+        <p class="mt-5 max-w-xs text-sm leading-relaxed text-ink-200/80">
+          Classroom-only hospital administration training at Infopark, Kochi.
+          Small in-person batches, real hospital exposure, placement support.
+        </p>
+        <a
+          href={contact.instagramHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="mt-6 inline-flex items-center gap-2 text-sm font-medium text-ink-200/80 transition-colors hover:text-white"
+        >
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="2" y="2" width="20" height="20" rx="5"></rect>
+            <circle cx="12" cy="12" r="4"></circle>
+            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle>
+          </svg>
+          @{contact.instagram}
+        </a>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-wider text-white">Explore</h2>
+        <ul class="mt-5 space-y-3 text-sm">
+          {
+            nav.map((item) => (
+              <li>
+                <a href={item.href} class="text-ink-200/80 transition-colors hover:text-white">
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-wider text-white">Programs</h2>
+        <ul class="mt-5 space-y-3 text-sm">
+          {
+            courses.map((course) => (
+              <li>
+                <a
+                  href={`/courses/${course.slug}/`}
+                  class="text-ink-200/80 transition-colors hover:text-white"
+                >
+                  {course.title}
+                  <span class="block text-xs text-ink-400">{course.duration}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold uppercase tracking-wider text-white">Visit us</h2>
+        <address class="mt-5 space-y-3 text-sm not-italic text-ink-200/80">
+          <p>
+            {contact.campus.line1}<br />
+            {contact.campus.line2}<br />
+            {contact.campus.city}, {contact.campus.state} {contact.campus.pincode}
+          </p>
+          <p>
+            <a href={contact.phoneHref} class="font-semibold text-white hover:text-brand-200">
+              {contact.phone}
+            </a>
+          </p>
+          <p>
+            <a href={contact.emailHref} class="hover:text-white">{contact.email}</a>
+          </p>
+        </address>
+      </div>
+    </div>
+
+    <div
+      class="mt-14 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-ink-400 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p>© {year} {site.legalName}. All rights reserved.</p>
+      <p>All programs are conducted in person at our Infopark campus.</p>
+    </div>
+  </div>
+</footer>

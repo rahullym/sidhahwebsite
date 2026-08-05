@@ -1,0 +1,106 @@
+---
+import { Image } from 'astro:assets';
+import type { VideoTestimonial } from '../data/placements';
+import { galleryPhoto } from '../lib/images';
+
+interface Props {
+  testimonial: VideoTestimonial;
+}
+
+const { testimonial } = Astro.props;
+const poster = testimonial.poster ? galleryPhoto(testimonial.poster) : undefined;
+
+/**
+ * Facade pattern: nothing from YouTube loads until the visitor clicks play.
+ * That keeps the page fast and stops YouTube setting cookies on people who
+ * never watch. `maxresdefault` is missing on some uploads, so fall back.
+ */
+const thumb = `https://i.ytimg.com/vi/${testimonial.youtubeId}/maxresdefault.jpg`;
+const thumbFallback = `https://i.ytimg.com/vi/${testimonial.youtubeId}/hqdefault.jpg`;
+---
+
+<figure class="overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-card">
+  <div
+    class="relative aspect-video bg-ink-900"
+    data-video-facade
+    data-youtube-id={testimonial.youtubeId}
+  >
+    {
+      poster ? (
+        <Image
+          src={poster}
+          alt=""
+          widths={[480, 768, 1024]}
+          sizes="(min-width: 1024px) 32rem, 90vw"
+          class="h-full w-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <img
+          src={thumb}
+          data-thumb-fallback={thumbFallback}
+          alt=""
+          class="h-full w-full object-cover"
+          loading="lazy"
+        />
+      )
+    }
+
+    <button
+      type="button"
+      data-video-play
+      class="absolute inset-0 flex items-center justify-center bg-ink-950/25 transition-colors hover:bg-ink-950/40"
+      aria-label={`Play ${testimonial.name}'s testimonial`}
+    >
+      <span
+        class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/95 shadow-lift transition-transform motion-safe:group-hover:scale-110"
+      >
+        <svg class="ml-1 h-7 w-7 text-brand-700" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z"></path>
+        </svg>
+      </span>
+    </button>
+  </div>
+
+  <figcaption class="p-6">
+    <blockquote class="text-[0.95rem] leading-relaxed text-ink-600">
+      “{testimonial.quote}”
+    </blockquote>
+    <p class="mt-4 font-bold text-ink-900">{testimonial.name}</p>
+    <p class="text-sm text-ink-400">{testimonial.role}</p>
+  </figcaption>
+</figure>
+
+<script>
+  // Not every upload has a maxresdefault thumbnail; swap to hqdefault if it 404s.
+  document.querySelectorAll<HTMLImageElement>('[data-thumb-fallback]').forEach((img) => {
+    img.addEventListener(
+      'error',
+      () => {
+        const fallback = img.dataset.thumbFallback;
+        if (fallback) {
+          img.removeAttribute('data-thumb-fallback');
+          img.src = fallback;
+        }
+      },
+      { once: true },
+    );
+  });
+
+  document.querySelectorAll<HTMLElement>('[data-video-facade]').forEach((facade) => {
+    const button = facade.querySelector<HTMLButtonElement>('[data-video-play]');
+    const id = facade.dataset.youtubeId;
+    if (!button || !id) return;
+
+    button.addEventListener('click', () => {
+      const frame = document.createElement('iframe');
+      frame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+      frame.title = button.getAttribute('aria-label') ?? 'Student testimonial';
+      frame.allow =
+        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      frame.allowFullscreen = true;
+      frame.className = 'absolute inset-0 h-full w-full border-0';
+      facade.replaceChildren(frame);
+    });
+  });
+</script>

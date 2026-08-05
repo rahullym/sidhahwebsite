@@ -1,0 +1,164 @@
+---
+import Base from '../layouts/Base.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+import EnquiryCTA from '../components/EnquiryCTA.astro';
+
+const values = [
+  {
+    title: 'Skill over certificates',
+    body: 'A certificate opens the door once. The skill keeps you in the room. Everything we teach is chosen because a hospital in Kerala is hiring for it right now.',
+  },
+  {
+    title: 'Present, not logged in',
+    body: 'Attendance is a discipline, not an inconvenience. Students who show up daily to a physical classroom build the habits the job will demand of them.',
+  },
+  {
+    title: 'Small batches, named students',
+    body: 'We keep batches small enough that faculty know who is struggling with insurance documentation and who needs more interview practice.',
+  },
+  {
+    title: 'Honest about outcomes',
+    body: 'We will tell you plainly what each program leads to and what it does not. Come to the campus, ask hard questions, and decide from there.',
+  },
+];
+
+const timeline = [
+  {
+    title: 'You visit the campus',
+    body: 'Walk into Geo Infopark, see the classroom, meet the faculty and sit in on a running session. No pressure to sign anything.',
+  },
+  {
+    title: 'We match you to a program',
+    body: 'Based on your qualification and what you want to be doing in two years, we recommend the 6-month Diploma or the 1-year PG Diploma.',
+  },
+  {
+    title: 'You join a classroom batch',
+    body: 'Daily in-person sessions, practical labs, hospital visits and continuous assessment through the length of the program.',
+  },
+  {
+    title: 'We prepare you to be hired',
+    body: 'Interview training, resume clinics and mock HR panels run alongside the syllabus, then we connect you with employers around Kochi.',
+  },
+];
+---
+
+<Base
+  title="About"
+  description="Sidhah Edutech is a classroom-only skill training institute at Infopark, Kakkanad, offering hospital administration diplomas with hospital exposure and placement support."
+>
+  <section class="hex-pattern border-b border-ink-100 bg-brand-50/60">
+    <div class="container-page py-16 sm:py-20">
+      <p class="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">About Sidhah</p>
+      <h1 class="mt-3 max-w-3xl text-4xl leading-tight sm:text-5xl">
+        We train people for hospital floors, so we teach them in rooms
+      </h1>
+      <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-600">
+        Sidhah Edutech is a skill training institute at Infopark, Kakkanad. Our
+        purpose is straightforward: give young people in Kerala market-relevant
+        training that leads to an actual job — and do it in person, where
+        teaching still works properly.
+      </p>
+    </div>
+  </section>
+
+  <section class="container-page py-20 sm:py-24">
+    <div class="grid gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+      <div class="space-y-5 text-lg leading-relaxed text-ink-600">
+        <h2 class="text-3xl">Why we went the other way</h2>
+        <p>
+          When skill training moved online, a lot of institutes followed. The
+          economics were obvious: record once, sell forever. What got quietly
+          lost was the part that actually produces a hireable graduate — someone
+          watching how you speak to a patient, correcting your documentation at
+          the desk, putting you in front of an interview panel until the nerves
+          go.
+        </p>
+        <p>
+          Hospital administration is a people-facing job. You will spend your
+          days managing queues, calming relatives, chasing insurance approvals
+          and holding departments to a standard. None of that is learned by
+          pausing a video.
+        </p>
+        <p class="font-semibold text-ink-900">
+          So every Sidhah program is offline. One campus, real classrooms,
+          faculty you can walk up to.
+        </p>
+      </div>
+
+      <div class="rounded-4xl border border-ink-100 bg-white p-8 shadow-card">
+        <h2 class="text-xl">What we set out to do</h2>
+        <dl class="mt-6 space-y-6">
+          <div>
+            <dt class="text-sm font-bold uppercase tracking-wider text-brand-600">Mission</dt>
+            <dd class="mt-2 leading-relaxed text-ink-600">
+              Offer market-relevant skill training to young people in Kerala, so
+              that enrolling opens a real job opportunity rather than adding a
+              line to a resume.
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-bold uppercase tracking-wider text-brand-600">Approach</dt>
+            <dd class="mt-2 leading-relaxed text-ink-600">
+              Classroom teaching, practical labs, hospital exposure and interview
+              preparation — bundled into every program, not sold as extras.
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-bold uppercase tracking-wider text-brand-600">Focus</dt>
+            <dd class="mt-2 leading-relaxed text-ink-600">
+              Hospital and healthcare administration, supported by the commerce,
+              communication and computer skills those roles depend on.
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-ink-50/60 py-20 sm:py-24">
+    <div class="container-page">
+      <SectionHeading eyebrow="What we hold to" title="Four things we do not compromise on" />
+      <div class="mt-14 grid gap-6 sm:grid-cols-2">
+        {
+          values.map((value, index) => (
+            <div class="rounded-3xl border border-ink-100 bg-white p-7 shadow-card">
+              <span class="text-sm font-extrabold text-brand-300">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <h3 class="mt-3 text-xl">{value.title}</h3>
+              <p class="mt-3 leading-relaxed text-ink-600">{value.body}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="container-page py-20 sm:py-24">
+    <SectionHeading
+      eyebrow="How it works"
+      title="From first visit to first job"
+      align="left"
+    />
+
+    <ol class="mt-14 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+      {
+        timeline.map((step, index) => (
+          <li class="relative">
+            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-600 text-sm font-extrabold text-white">
+              {index + 1}
+            </span>
+            <h3 class="mt-5 text-lg">{step.title}</h3>
+            <p class="mt-2.5 leading-relaxed text-ink-600">{step.body}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+
+  <EnquiryCTA
+    title="The best way to judge us is to visit"
+    description="Come to the Infopark campus, sit at the back of a live class and make up your own mind. No appointment fee, no obligation."
+    message="Hi Sidhah, I'd like to visit the campus and sit in on a class."
+  />
+</Base>

@@ -1,0 +1,71 @@
+---
+import type { Module } from '../data/courses';
+
+interface Props {
+  modules: Module[];
+}
+
+const { modules } = Astro.props;
+
+/**
+ * Chapters are numbered continuously across the whole course, so each module
+ * needs the running total of all chapters before it.
+ */
+let runningTotal = 0;
+const numbered = modules.map((module) => {
+  const startsAt = runningTotal + 1;
+  runningTotal += module.chapters.length;
+  return { ...module, startsAt };
+});
+---
+
+<div class="space-y-4">
+  {
+    numbered.map((module, index) => (
+      <details
+        class="group overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-card open:shadow-lift"
+        open={index === 0}
+      >
+        <summary class="flex cursor-pointer list-none items-center gap-4 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-sm font-extrabold text-brand-700">
+            {String(index + 1).padStart(2, '0')}
+          </span>
+          <span class="flex-1">
+            <span class="block text-xs font-bold uppercase tracking-[0.14em] text-ink-400">
+              Module {index + 1}
+            </span>
+            <span class="mt-1 block text-base font-bold text-ink-900 sm:text-lg">
+              {module.title}
+            </span>
+          </span>
+          <span class="hidden shrink-0 text-sm font-medium text-ink-400 sm:block">
+            {module.chapters.length} chapters
+          </span>
+          <svg
+            class="h-5 w-5 shrink-0 text-ink-400 motion-safe:transition-transform group-open:rotate-180"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M5.3 7.3a1 1 0 011.4 0L10 10.6l3.3-3.3a1 1 0 111.4 1.4l-4 4a1 1 0 01-1.4 0l-4-4a1 1 0 010-1.4z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </summary>
+
+        <ol class="border-t border-ink-100 bg-ink-50/50 px-5 py-4 sm:px-6">
+          {module.chapters.map((chapter, chapterIndex) => (
+            <li class="flex gap-4 border-b border-ink-100/70 py-3 last:border-0">
+              <span class="w-7 shrink-0 text-sm font-bold tabular-nums text-brand-600">
+                {module.startsAt + chapterIndex}
+              </span>
+              <span class="text-sm leading-relaxed text-ink-600">{chapter}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
+    ))
+  }
+</div>

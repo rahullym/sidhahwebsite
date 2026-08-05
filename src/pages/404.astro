@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import { nav } from '../data/site';
+---
+
+<Base
+  title="Page not found"
+  description="The page you were looking for does not exist. Browse Sidhah's classroom hospital administration programs instead."
+>
+  <section class="container-page flex flex-col items-center py-28 text-center sm:py-36">
+    <p class="text-sm font-bold uppercase tracking-[0.2em] text-brand-600">404</p>
+    <h1 class="mt-4 text-4xl sm:text-5xl">We could not find that page</h1>
+    <p class="mt-5 max-w-md text-lg leading-relaxed text-ink-600">
+      It may have moved when we redesigned the site. Try one of these instead.
+    </p>
+
+    <nav class="mt-10 flex flex-wrap justify-center gap-3" aria-label="Site sections">
+      {
+        nav.map((item) => (
+          <a
+            href={item.href}
+            class="rounded-xl border border-ink-200 bg-white px-5 py-3 text-sm font-bold text-ink-900 transition-colors hover:border-brand-300 hover:text-brand-700"
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+  </section>
+</Base>

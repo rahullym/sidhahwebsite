@@ -1,0 +1,114 @@
+---
+import type { Course } from '../data/courses';
+import { chapterCount } from '../data/courses';
+import Photo from './Photo.astro';
+
+interface Props {
+  course: Course;
+}
+
+const { course } = Astro.props;
+const chapters = chapterCount(course);
+---
+
+<article
+  data-reveal
+  class="group relative flex flex-col overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-card transition-shadow hover:shadow-lift"
+>
+  <div class="relative">
+    <Photo
+      name={`course-${course.slug}`}
+      alt={`Students on the ${course.title} program`}
+      ratio="aspect-21/9"
+      sizes="(min-width: 1024px) 34rem, 90vw"
+      widths={[480, 768, 1100]}
+      icon="classroom"
+      tone="dark"
+    />
+    <div
+      class="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/90 via-ink-950/40 to-transparent"
+      aria-hidden="true"
+    >
+    </div>
+
+    {/* Badge sits in the corner rather than beside the title — at phone widths a
+        three-line title and the badge were fighting for the same row. */}
+    <span
+      class="absolute right-5 top-5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-bold text-ink-900 shadow-sm backdrop-blur"
+    >
+      {course.duration}
+    </span>
+
+    <div class="absolute inset-x-0 bottom-0 p-6">
+      <p class="text-xs font-bold uppercase tracking-[0.16em] text-brand-200">
+        {course.level}
+      </p>
+      <h3 class="mt-1.5 text-xl leading-tight text-white sm:text-2xl">
+        <a href={`/courses/${course.slug}/`} class="after:absolute after:inset-0">
+          {course.title}
+        </a>
+      </h3>
+    </div>
+  </div>
+
+  <div class="flex flex-1 flex-col p-7">
+    <p class="text-[0.95rem] leading-relaxed text-ink-600">{course.summary}</p>
+
+    <dl class="mt-6 grid grid-cols-3 gap-3 border-y border-ink-100 py-5">
+      <div>
+        <dt class="text-xs font-medium text-ink-400">Modules</dt>
+        <dd class="mt-1 text-xl font-bold text-ink-900">{course.modules.length}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-ink-400">Chapters</dt>
+        <dd class="mt-1 text-xl font-bold text-ink-900">{chapters}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-ink-400">Mode</dt>
+        <dd class="mt-1 text-xl font-bold text-ink-900">Offline</dd>
+      </div>
+    </dl>
+
+    <ul class="mt-6 space-y-2.5 text-sm text-ink-600">
+      {
+        course.modules.slice(0, 3).map((module) => (
+          <li class="flex gap-2.5">
+            <svg
+              class="mt-0.5 h-4 w-4 shrink-0 text-brand-500"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.86-9.47a1 1 0 00-1.72-1.06l-2.7 4.37-1.23-1.23a1 1 0 10-1.42 1.42l2.1 2.1a1 1 0 001.56-.18l3.41-5.42z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            {module.title}
+          </li>
+        ))
+      }
+      {
+        course.modules.length > 3 && (
+          <li class="pl-6.5 text-sm font-medium text-ink-400">
+            + {course.modules.length - 3} more modules
+          </li>
+        )
+      }
+    </ul>
+
+    <p
+      class="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 group-hover:gap-3 motion-safe:transition-all"
+    >
+      View full syllabus
+      <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path
+          fill-rule="evenodd"
+          d="M3 10a1 1 0 011-1h10.6l-3.3-3.3a1 1 0 111.4-1.4l5 5a1 1 0 010 1.4l-5 5a1 1 0 01-1.4-1.4l3.3-3.3H4a1 1 0 01-1-1z"
+          clip-rule="evenodd"
+        />
+      </svg>
+    </p>
+  </div>
+</article>

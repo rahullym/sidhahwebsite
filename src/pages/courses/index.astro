@@ -1,0 +1,170 @@
+---
+import Base from '../../layouts/Base.astro';
+import SectionHeading from '../../components/SectionHeading.astro';
+import CourseCard from '../../components/CourseCard.astro';
+import EnquiryCTA from '../../components/EnquiryCTA.astro';
+import { courses, addOns, addOnNote } from '../../data/courses';
+
+const [pg, diploma] = courses;
+
+const comparison = [
+  { label: 'Duration', pg: '1 Year', diploma: '6 Months' },
+  { label: 'Modules', pg: '7', diploma: '4' },
+  { label: 'Chapters', pg: '60', diploma: '38' },
+  { label: 'Hospital operations & administration', pg: true, diploma: true },
+  { label: 'Management fundamentals', pg: true, diploma: true },
+  { label: 'Healthcare AI & information systems', pg: true, diploma: true },
+  { label: 'Public & community health administration', pg: true, diploma: false },
+  { label: 'Healthcare analytics & economics', pg: true, diploma: false },
+  { label: 'Risk & strategic operations', pg: true, diploma: false },
+  { label: 'Add-on programs included', pg: true, diploma: true },
+  { label: 'Interview training & placement support', pg: true, diploma: true },
+  { label: 'Delivery mode', pg: 'Classroom', diploma: 'Classroom' },
+];
+---
+
+<Base
+  title="Programs"
+  description="Classroom-only hospital administration programs at Sidhah, Infopark Kochi — a 1-year PG Diploma (7 modules, 60 chapters) and a 6-month Diploma (4 modules, 38 chapters)."
+>
+  <section class="hex-pattern border-b border-ink-100 bg-brand-50/60">
+    <div class="container-page py-16 sm:py-20">
+      <p class="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Programs</p>
+      <h1 class="mt-3 max-w-3xl text-4xl leading-tight sm:text-5xl">
+        Every program here happens in a classroom
+      </h1>
+      <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-600">
+        Two hospital administration diplomas, taught face to face at our
+        Infopark campus in Kakkanad. Same faculty, same hospital exposure, same
+        placement support — the difference is how far you want to go.
+      </p>
+    </div>
+  </section>
+
+  <section class="container-page py-16 sm:py-20">
+    <div class="grid gap-7 lg:grid-cols-2">
+      {courses.map((course) => <CourseCard course={course} />)}
+    </div>
+  </section>
+
+  <!-- Comparison -->
+  <section class="bg-ink-50/60 py-20 sm:py-24">
+    <div class="container-page">
+      <SectionHeading
+        eyebrow="Side by side"
+        title="Which one is right for you?"
+        description="The Diploma is the first four modules of the PG Diploma. If you want to move into management rather than start at the desk, take the full year."
+      />
+
+      <div class="mt-12 overflow-x-auto">
+        <table class="w-full min-w-[38rem] border-collapse overflow-hidden rounded-2xl bg-white text-left shadow-card">
+          <thead>
+            <tr class="border-b border-ink-100">
+              <th scope="col" class="p-5 text-sm font-bold text-ink-400">Feature</th>
+              <th scope="col" class="p-5 text-sm font-bold text-ink-900">
+                PG Diploma
+                <span class="mt-0.5 block text-xs font-medium text-ink-400">1 Year</span>
+              </th>
+              <th scope="col" class="p-5 text-sm font-bold text-ink-900">
+                Diploma
+                <span class="mt-0.5 block text-xs font-medium text-ink-400">6 Months</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              comparison.map((row) => (
+                <tr class="border-b border-ink-100 last:border-0">
+                  <th scope="row" class="p-5 text-sm font-medium text-ink-600">
+                    {row.label}
+                  </th>
+                  {[row.pg, row.diploma].map((value) => (
+                    <td class="p-5 text-sm font-semibold text-ink-900">
+                      {typeof value === 'boolean' ? (
+                        value ? (
+                          <span class="inline-flex items-center gap-1.5 text-brand-700">
+                            <svg
+                              class="h-5 w-5"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              aria-hidden="true"
+                            >
+                              <path
+                                fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.86-9.47a1 1 0 00-1.72-1.06l-2.7 4.37-1.23-1.23a1 1 0 10-1.42 1.42l2.1 2.1a1 1 0 001.56-.18l3.41-5.42z"
+                                clip-rule="evenodd"
+                              />
+                            </svg>
+                            <span class="sr-only">Included</span>
+                          </span>
+                        ) : (
+                          <span class="text-ink-200">
+                            <svg
+                              class="h-5 w-5"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              aria-hidden="true"
+                            >
+                              <path
+                                fill-rule="evenodd"
+                                d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z"
+                                clip-rule="evenodd"
+                              />
+                            </svg>
+                            <span class="sr-only">Not included</span>
+                          </span>
+                        )
+                      ) : (
+                        value
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            }
+            <tr>
+              <td class="p-5"></td>
+              <td class="p-5">
+                <a
+                  href={`/courses/${pg!.slug}/`}
+                  class="inline-flex rounded-xl bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                >
+                  View syllabus
+                </a>
+              </td>
+              <td class="p-5">
+                <a
+                  href={`/courses/${diploma!.slug}/`}
+                  class="inline-flex rounded-xl border border-ink-200 px-5 py-3 text-sm font-bold text-ink-900 transition-colors hover:border-brand-300 hover:text-brand-700"
+                >
+                  View syllabus
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Add-ons -->
+  <section class="container-page py-20 sm:py-24">
+    <SectionHeading eyebrow="Included with both" title="Add-on programs" description={addOnNote} />
+    <div class="mt-12 grid gap-6 md:grid-cols-3">
+      {
+        addOns.map((addOn) => (
+          <div class="rounded-3xl border border-ink-100 bg-white p-7 shadow-card">
+            <h3 class="text-xl">{addOn.title}</h3>
+            <p class="mt-3 leading-relaxed text-ink-600">{addOn.description}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <EnquiryCTA
+    title="Not sure which program fits?"
+    description="Come in and talk it through. We will look at your background, tell you what each program leads to, and let you sit in on a live class."
+    message="Hi Sidhah, I'd like help choosing between the PG Diploma and the 6-month Diploma."
+  />
+</Base>

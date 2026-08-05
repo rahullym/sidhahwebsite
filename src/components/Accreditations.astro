@@ -1,0 +1,57 @@
+---
+import { Image } from 'astro:assets';
+import { accreditations } from '../data/placements';
+import { logo } from '../lib/images';
+
+/**
+ * Logo-first, with a text chip wherever a mark is missing. Chip height is fixed
+ * and width grows to fit the mark, so a wide government wordmark and a round
+ * emblem sit on the same optical baseline instead of one being squashed.
+ *
+ * Marks are dark-on-transparent, so this belongs on light backgrounds only.
+ */
+const items = accreditations.map((item) => ({ ...item, mark: logo(item.slug) }));
+---
+
+<div class="text-center">
+  <p class="text-xs font-bold uppercase tracking-[0.18em] text-ink-400">
+    Recognised &amp; certified
+  </p>
+
+  <ul class="mt-6 flex flex-wrap items-stretch justify-center gap-3 sm:gap-4">
+    {
+      items.map(({ name, full, mark }) => (
+        <li
+          class="flex h-24 min-w-52 max-w-xs items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 shadow-card"
+          title={full}
+        >
+          {mark ? (
+            mark.format === 'svg' ? (
+              /* SVGs are already resolution-independent — no point resizing them. */
+              <img
+                src={mark.src}
+                alt={full}
+                class="h-14 w-auto object-contain"
+                loading="lazy"
+              />
+            ) : (
+              <Image
+                src={mark}
+                alt={full}
+                widths={[220, 440]}
+                sizes="13rem"
+                class="h-12 w-auto object-contain"
+                loading="lazy"
+              />
+            )
+          ) : (
+            <span class="text-center">
+              <span class="block text-sm font-bold leading-tight text-ink-900">{name}</span>
+              <span class="mt-1 block text-xs leading-snug text-ink-400">{full}</span>
+            </span>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</div>

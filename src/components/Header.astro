@@ -1,0 +1,154 @@
+---
+import Logo from './Logo.astro';
+import { nav, contact } from '../data/site';
+
+const path = Astro.url.pathname;
+
+/** Treat `/courses/some-slug/` as still being on the Programs tab. */
+function isActive(href: string): boolean {
+  if (href === '/') return path === '/';
+  return path.startsWith(href);
+}
+---
+
+<header
+  class="sticky top-0 z-50 border-b border-ink-100 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75"
+>
+  <div class="hidden bg-ink-900 py-2 text-white lg:block">
+    <div class="container-page flex items-center justify-between text-xs">
+      <p class="flex items-center gap-2 text-ink-100">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-gold-400"></span>
+        Classroom training only — Infopark campus, Kakkanad
+      </p>
+      <div class="flex items-center gap-5">
+        <a href={contact.phoneHref} class="font-medium hover:text-brand-200">
+          {contact.phone}
+        </a>
+        <span class="text-ink-600">|</span>
+        <a href={contact.emailHref} class="font-medium hover:text-brand-200">
+          {contact.email}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-page flex h-[4.5rem] items-center justify-between gap-4">
+    <a href="/" class="shrink-0" aria-label="Sidhah — home">
+      <Logo />
+    </a>
+
+    <nav class="hidden items-center gap-1 lg:flex" aria-label="Main">
+      {
+        nav.map((item) => (
+          <a
+            href={item.href}
+            aria-current={isActive(item.href) ? 'page' : undefined}
+            class={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
+              isActive(item.href)
+                ? 'bg-brand-50 text-brand-700'
+                : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900'
+            }`}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <a
+        href={contact.phoneHref}
+        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-ink-200 text-ink-600 transition-colors hover:border-brand-300 hover:text-brand-600 lg:hidden"
+        aria-label={`Call ${contact.phone}`}
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path
+            d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </a>
+
+      <a
+        href="/contact/"
+        class="hidden rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:inline-flex"
+      >
+        Book a campus visit
+      </a>
+
+      <button
+        type="button"
+        id="nav-toggle"
+        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-ink-200 text-ink-900 lg:hidden"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="mobile-nav"
+      >
+        <svg
+          class="h-6 w-6"
+          data-icon="open"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M4 7h16M4 12h16M4 17h16"></path>
+        </svg>
+        <svg
+          class="hidden h-6 w-6"
+          data-icon="close"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobile-nav" class="hidden border-t border-ink-100 bg-white lg:hidden">
+    <nav class="container-page flex flex-col py-3" aria-label="Mobile">
+      {
+        nav.map((item) => (
+          <a
+            href={item.href}
+            aria-current={isActive(item.href) ? 'page' : undefined}
+            class={`rounded-lg px-3 py-3 text-base font-semibold ${
+              isActive(item.href) ? 'text-brand-700' : 'text-ink-800'
+            }`}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+      <a
+        href="/contact/"
+        class="mt-2 rounded-xl bg-brand-600 px-5 py-3 text-center text-sm font-semibold text-white"
+      >
+        Book a campus visit
+      </a>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const toggle = document.getElementById('nav-toggle');
+  const panel = document.getElementById('mobile-nav');
+
+  if (toggle && panel) {
+    const openIcon = toggle.querySelector('[data-icon="open"]');
+    const closeIcon = toggle.querySelector('[data-icon="close"]');
+
+    toggle.addEventListener('click', () => {
+      const isOpen = panel.classList.toggle('hidden') === false;
+      toggle.setAttribute('aria-expanded', String(isOpen));
+      toggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+      openIcon?.classList.toggle('hidden', isOpen);
+      closeIcon?.classList.toggle('hidden', !isOpen);
+    });
+  }
+</script>

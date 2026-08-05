@@ -1,0 +1,38 @@
+---
+import { Image } from 'astro:assets';
+import { galleryImages } from '../lib/images';
+
+interface Props {
+  alt: string;
+  /** Cap how many render; omit for all. */
+  limit?: number;
+}
+
+const { alt, limit } = Astro.props;
+const images = limit ? galleryImages().slice(0, limit) : galleryImages();
+---
+
+{
+  images.length > 0 && (
+    <ul class="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
+      {images.map((image, index) => (
+        <li
+          class:list={[
+            'overflow-hidden rounded-2xl border border-ink-100 bg-ink-100 shadow-card',
+            /* First tile spans two columns on wide screens so the grid isn't a flat strip. */
+            index === 0 && 'lg:col-span-2 lg:row-span-2',
+          ]}
+        >
+          <Image
+            src={image.src}
+            alt={alt}
+            widths={[320, 640, 960]}
+            sizes="(min-width: 1024px) 22rem, 45vw"
+            class="h-full w-full object-cover transition-transform duration-500 motion-safe:hover:scale-105"
+            loading="lazy"
+          />
+        </li>
+      ))}
+    </ul>
+  )
+}

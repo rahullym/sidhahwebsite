@@ -1,0 +1,204 @@
+---
+import Base from '../layouts/Base.astro';
+import { contact, whatsappHref } from '../data/site';
+import { courses } from '../data/courses';
+
+const channels = [
+  {
+    label: 'WhatsApp',
+    value: contact.phone,
+    detail: 'Fastest reply during working hours',
+    href: whatsappHref(
+      "Hi Sidhah, I'd like to know more about your classroom hospital administration programs.",
+    ),
+    external: true,
+    accent: 'bg-[#25D366]/12 text-[#128C4A]',
+    icon: 'M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.86 9.86 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z',
+    filled: true,
+  },
+  {
+    label: 'Phone',
+    value: contact.phone,
+    detail: 'Mon–Sat, 9:30 AM – 6:00 PM',
+    href: contact.phoneHref,
+    external: false,
+    accent: 'bg-brand-50 text-brand-700',
+    icon: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z',
+    filled: false,
+  },
+  {
+    label: 'Email',
+    value: contact.email,
+    detail: 'For detailed enquiries and documents',
+    href: contact.emailHref,
+    external: false,
+    accent: 'bg-ink-100 text-ink-800',
+    icon: 'M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm0 2l8 6 8-6',
+    filled: false,
+  },
+  {
+    label: 'Instagram',
+    value: `@${contact.instagram}`,
+    detail: 'Batch updates and campus photos',
+    href: contact.instagramHref,
+    external: true,
+    accent: 'bg-gold-500/12 text-gold-600',
+    icon: 'M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 6a4 4 0 100 8 4 4 0 000-8z',
+    filled: false,
+  },
+];
+---
+
+<Base
+  title="Contact"
+  description="Talk to Sidhah Edutech about classroom hospital administration programs at Infopark, Kakkanad. Call +91 7012644182, message on WhatsApp or email hr.sidhah@gmail.com."
+>
+  <section class="hex-pattern border-b border-ink-100 bg-brand-50/60">
+    <div class="container-page py-16 sm:py-20">
+      <p class="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Contact</p>
+      <h1 class="mt-3 max-w-3xl text-4xl leading-tight sm:text-5xl">
+        Ask us anything — or just come in
+      </h1>
+      <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-600">
+        Batch dates, fee structure, eligibility, placement support. Message on
+        WhatsApp for the quickest answer, or call and speak to someone directly.
+      </p>
+    </div>
+  </section>
+
+  <section class="container-page py-16 sm:py-20">
+    <div class="grid gap-6 sm:grid-cols-2">
+      {
+        channels.map((channel) => (
+          <a
+            href={channel.href}
+            target={channel.external ? '_blank' : undefined}
+            rel={channel.external ? 'noopener noreferrer' : undefined}
+            class="group flex min-w-0 items-start gap-5 rounded-3xl border border-ink-100 bg-white p-6 shadow-card transition-shadow hover:shadow-lift sm:p-7"
+          >
+            <span
+              class={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${channel.accent}`}
+            >
+              <svg
+                class="h-6 w-6"
+                viewBox="0 0 24 24"
+                fill={channel.filled ? 'currentColor' : 'none'}
+                stroke={channel.filled ? 'none' : 'currentColor'}
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d={channel.icon} />
+              </svg>
+            </span>
+            {/* min-w-0 lets the flex item shrink below its longest word, so a long
+                email address wraps instead of being clipped on small phones. */}
+            <span class="min-w-0 flex-1">
+              <span class="block text-xs font-bold uppercase tracking-[0.14em] text-ink-400">
+                {channel.label}
+              </span>
+              {/* `anywhere` (unlike break-word) also shrinks min-content, so the
+                  address can't force the card wider than the screen. */}
+              <span class="mt-1.5 block text-lg font-bold text-ink-900 [overflow-wrap:anywhere]">
+                {channel.value}
+              </span>
+              <span class="mt-1 block text-sm text-ink-600">{channel.detail}</span>
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="container-page pb-20 sm:pb-24">
+    <div class="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+      <div class="rounded-4xl border border-ink-100 bg-white p-8 shadow-card sm:p-10">
+        <h2 class="text-2xl">Enquire about a program</h2>
+        <p class="mt-3 leading-relaxed text-ink-600">
+          Pick the program you are interested in and we will open WhatsApp with
+          your message ready to send.
+        </p>
+
+        <ul class="mt-8 space-y-3">
+          {
+            courses.map((course) => (
+              <li>
+                <a
+                  href={whatsappHref(
+                    `Hi Sidhah, I'd like to know the batch dates, fees and eligibility for the ${course.title} (${course.duration}).`,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex items-center justify-between gap-4 rounded-2xl border border-ink-100 p-5 transition-colors hover:border-brand-300 hover:bg-brand-50/50"
+                >
+                  <span>
+                    <span class="block font-bold text-ink-900">{course.title}</span>
+                    <span class="mt-0.5 block text-sm text-ink-400">
+                      {course.duration} · classroom only
+                    </span>
+                  </span>
+                  <span class="shrink-0 text-sm font-bold text-brand-700">Enquire →</span>
+                </a>
+              </li>
+            ))
+          }
+          <li>
+            <a
+              href={whatsappHref(
+                "Hi Sidhah, I'd like to book a campus visit at Infopark and sit in on a class.",
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center justify-between gap-4 rounded-2xl bg-ink-900 p-5 text-white transition-colors hover:bg-ink-800"
+            >
+              <span>
+                <span class="block font-bold">Book a campus visit</span>
+                <span class="mt-0.5 block text-sm text-ink-200">
+                  Meet the faculty, see a live class
+                </span>
+              </span>
+              <span class="shrink-0 text-sm font-bold text-brand-200">Message →</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="rounded-4xl border border-ink-100 bg-ink-50/60 p-8 sm:p-10">
+        <h2 class="text-2xl">Visit the campus</h2>
+        <address class="mt-5 not-italic leading-relaxed text-ink-600">
+          {contact.campus.name}<br />
+          {contact.campus.line1}<br />
+          {contact.campus.line2}<br />
+          {contact.campus.city}, {contact.campus.state} {contact.campus.pincode}
+        </address>
+
+        <a
+          href={contact.campus.mapsHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="mt-6 inline-flex items-center gap-2 text-sm font-bold text-brand-700 hover:text-brand-800"
+        >
+          Get directions →
+        </a>
+
+        <dl class="mt-8 space-y-3 border-t border-ink-200/70 pt-6">
+          {
+            contact.hours.map((slot) => (
+              <div class="flex items-center justify-between gap-4">
+                <dt class="text-sm text-ink-600">{slot.days}</dt>
+                <dd class="text-sm font-bold text-ink-900">{slot.time}</dd>
+              </div>
+            ))
+          }
+        </dl>
+
+        <p class="mt-8 rounded-2xl border border-brand-200 bg-white p-5 text-sm leading-relaxed text-ink-600">
+          <span class="font-bold text-ink-900">A note on class mode:</span> Sidhah
+          runs classroom batches only. We do not offer online, hybrid or recorded
+          versions of these programs.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>

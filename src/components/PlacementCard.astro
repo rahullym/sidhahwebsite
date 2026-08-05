@@ -1,0 +1,72 @@
+---
+import { Image } from 'astro:assets';
+import type { Placement } from '../data/placements';
+import { placementPhoto, initials } from '../lib/images';
+
+interface Props {
+  placement: Placement;
+}
+
+const { placement } = Astro.props;
+const photo = placementPhoto(placement.slug);
+---
+
+<article
+  data-reveal
+  class="group relative flex flex-col overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-card transition-shadow hover:shadow-lift"
+>
+  <div class="relative aspect-4/5 overflow-hidden bg-ink-100">
+    {
+      photo ? (
+        <Image
+          src={photo}
+          alt={`${placement.name}, ${placement.position} at ${placement.hospital}`}
+          widths={[320, 480, 640]}
+          sizes="(min-width: 1024px) 22rem, (min-width: 640px) 45vw, 90vw"
+          class="h-full w-full object-cover object-top transition-transform duration-500 motion-safe:group-hover:scale-105"
+          loading="lazy"
+        />
+      ) : (
+        /* Shown until src/assets/placements/<slug>.jpg is added. */
+        <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-100 to-brand-200">
+          <span class="text-5xl font-extrabold text-brand-700/70">
+            {initials(placement.name)}
+          </span>
+        </div>
+      )
+    }
+
+    <div
+      class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink-950/85 via-ink-950/45 to-transparent p-5 pt-16"
+    >
+      <p class="text-lg font-extrabold leading-tight text-white">{placement.name}</p>
+      <p class="mt-0.5 text-sm font-medium text-brand-200">{placement.program}</p>
+    </div>
+
+    {
+      placement.from && (
+        <p class="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-ink-900 shadow-sm backdrop-blur">
+          {placement.from} → Hospital
+        </p>
+      )
+    }
+  </div>
+
+  <div class="flex flex-1 flex-col p-6">
+    <dl class="space-y-3.5">
+      <div>
+        <dt class="text-xs font-bold uppercase tracking-[0.14em] text-ink-400">
+          {placement.kind === 'training' ? 'Training at' : 'Hospital'}
+        </dt>
+        <dd class="mt-1 font-bold text-ink-900">
+          {placement.hospital}
+          <span class="block text-sm font-medium text-ink-400">{placement.location}</span>
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs font-bold uppercase tracking-[0.14em] text-ink-400">Position</dt>
+        <dd class="mt-1 font-bold text-brand-700">{placement.position}</dd>
+      </div>
+    </dl>
+  </div>
+</article>
