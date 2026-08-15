@@ -10,7 +10,7 @@ const year = new Date().getFullYear();
   <div class="container-page py-16">
     <div class="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
       <div>
-        <Logo variant="light" />
+        <Logo variant="light" class="h-12" />
         <p class="mt-5 max-w-xs text-sm leading-relaxed text-ink-200/80">
           Classroom-only hospital administration training at Infopark, Kochi.
           Small in-person batches, real hospital exposure, placement support.
@@ -56,7 +56,7 @@ const year = new Date().getFullYear();
                   class="text-ink-200/80 transition-colors hover:text-white"
                 >
                   {course.title}
-                  <span class="block text-xs text-ink-400">{course.duration}</span>
+                  <span class="block text-xs text-ink-300">{course.duration}</span>
                 </a>
               </li>
             ))
@@ -85,7 +85,7 @@ const year = new Date().getFullYear();
     </div>
 
     <div
-      class="mt-14 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-ink-400 sm:flex-row sm:items-center sm:justify-between"
+      class="mt-14 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-ink-300 sm:flex-row sm:items-center sm:justify-between"
     >
       <p>© {year} {site.legalName}. All rights reserved.</p>
       <p>All programs are conducted in person at our Infopark campus.</p>
