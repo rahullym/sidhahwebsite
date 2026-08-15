@@ -4,6 +4,7 @@ import SyllabusAccordion from '../../components/SyllabusAccordion.astro';
 import EnquiryCTA from '../../components/EnquiryCTA.astro';
 import { courses, chapterCount, type Course } from '../../data/courses';
 import { site, contact, whatsappHref } from '../../data/site';
+import { href } from '../../lib/url';
 
 export function getStaticPaths() {
   return courses.map((course) => ({
@@ -62,9 +63,9 @@ const courseSchema = {
     <div class="container-page py-14 sm:py-18">
       <nav aria-label="Breadcrumb" class="text-sm">
         <ol class="flex flex-wrap items-center gap-2 text-ink-400">
-          <li><a href="/" class="hover:text-brand-700">Home</a></li>
+          <li><a href={href("/")} class="hover:text-brand-700">Home</a></li>
           <li aria-hidden="true">/</li>
-          <li><a href="/courses/" class="hover:text-brand-700">Programs</a></li>
+          <li><a href={href("/courses/")} class="hover:text-brand-700">Programs</a></li>
           <li aria-hidden="true">/</li>
           <li class="font-medium text-ink-600" aria-current="page">{course.shortTitle}</li>
         </ol>
@@ -270,7 +271,7 @@ const courseSchema = {
     other && (
       <section class="container-page pb-20 sm:pb-24">
         <a
-          href={`/courses/${other.slug}/`}
+          href={href(`/courses/${other.slug}/`)}
           class="group flex flex-col gap-4 rounded-3xl border border-ink-100 bg-ink-50/60 p-7 transition-colors hover:border-brand-300 hover:bg-brand-50/50 sm:flex-row sm:items-center sm:justify-between"
         >
           <div>

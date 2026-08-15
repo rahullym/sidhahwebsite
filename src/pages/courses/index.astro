@@ -4,6 +4,7 @@ import SectionHeading from '../../components/SectionHeading.astro';
 import CourseCard from '../../components/CourseCard.astro';
 import EnquiryCTA from '../../components/EnquiryCTA.astro';
 import { courses, addOns, addOnNote } from '../../data/courses';
+import { href } from '../../lib/url';
 
 const [pg, diploma] = courses;
 
@@ -126,7 +127,7 @@ const comparison = [
               <td class="p-5"></td>
               <td class="p-5">
                 <a
-                  href={`/courses/${pg!.slug}/`}
+                  href={href(`/courses/${pg!.slug}/`)}
                   class="inline-flex rounded-xl bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
                 >
                   View syllabus
@@ -134,7 +135,7 @@ const comparison = [
               </td>
               <td class="p-5">
                 <a
-                  href={`/courses/${diploma!.slug}/`}
+                  href={href(`/courses/${diploma!.slug}/`)}
                   class="inline-flex rounded-xl border border-ink-200 px-5 py-3 text-sm font-bold text-ink-900 transition-colors hover:border-brand-300 hover:text-brand-700"
                 >
                   View syllabus

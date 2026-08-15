@@ -4,6 +4,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import WhatsAppFloat from '../components/WhatsAppFloat.astro';
 import { site, contact } from '../data/site';
+import { href } from '../lib/url';
 
 interface Props {
   title: string;
@@ -13,6 +14,9 @@ interface Props {
 }
 
 const { title, description, suffix = true } = Astro.props;
+
+/* Derived from the resolved base, so it can't drift from astro.config. */
+const isPreview = import.meta.env.BASE_URL !== '/';
 
 const pageTitle = suffix ? `${title} | ${site.name}` : title;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? site.url).href;
@@ -46,10 +50,11 @@ const organizationSchema = {
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
-    <link rel="icon" href="/favicon-512.png" type="image/png" sizes="512x512" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" href={href("/favicon-32.png")} type="image/png" sizes="32x32" />
+    <link rel="icon" href={href("/favicon-512.png")} type="image/png" sizes="512x512" />
+    <link rel="apple-touch-icon" href={href("/apple-touch-icon.png")} />
     <meta name="theme-color" content="#181c3e" />
+    {isPreview && <meta name="robots" content="noindex, nofollow" />}
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={site.legalName} />

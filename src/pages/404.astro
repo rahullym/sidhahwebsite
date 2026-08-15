@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { nav } from '../data/site';
+import { href } from '../lib/url';
 ---
 
 <Base
@@ -18,7 +19,7 @@ import { nav } from '../data/site';
       {
         nav.map((item) => (
           <a
-            href={item.href}
+            href={href(item.href)}
             class="rounded-xl border border-ink-200 bg-white px-5 py-3 text-sm font-bold text-ink-900 transition-colors hover:border-brand-300 hover:text-brand-700"
           >
             {item.label}

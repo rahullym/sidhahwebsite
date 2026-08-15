@@ -9,6 +9,7 @@ import EnquiryCTA from '../components/EnquiryCTA.astro';
 import { courses, addOns, addOnNote } from '../data/courses';
 import { placements, hiringHospitals } from '../data/placements';
 import { contact, whatsappHref } from '../data/site';
+import { href } from '../lib/url';
 
 const featuredPlacements = placements.slice(0, 4);
 
@@ -147,7 +148,7 @@ const addOnIcons: Record<string, string> = {
 
           <div class="mt-9 flex flex-col gap-3 sm:flex-row">
             <a
-              href="/courses/"
+              href={href("/courses/")}
               class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-7 py-4 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition-colors hover:bg-brand-700"
             >
               Explore the programs
@@ -217,7 +218,7 @@ const addOnIcons: Record<string, string> = {
                 courses.map((course) => (
                   <li>
                     <a
-                      href={`/courses/${course.slug}/`}
+                      href={href(`/courses/${course.slug}/`)}
                       class="flex items-center gap-4 rounded-2xl border border-ink-100 p-3.5 transition-colors hover:border-brand-300 hover:bg-brand-50/50"
                     >
                       <span class="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-50 text-center">
@@ -396,7 +397,7 @@ const addOnIcons: Record<string, string> = {
         class="max-w-xl"
       />
       <a
-        href="/placements/"
+        href={href("/placements/")}
         class="inline-flex shrink-0 items-center gap-2 rounded-xl border border-ink-200 bg-white px-6 py-3.5 text-sm font-bold text-ink-900 transition-colors hover:border-brand-300 hover:text-brand-700"
       >
         All placements
@@ -468,7 +469,7 @@ const addOnIcons: Record<string, string> = {
             syllabus into someone a hospital wants to hire.
           </p>
           <a
-            href="/campus/"
+            href={href("/campus/")}
             class="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-ink-900 transition-colors hover:bg-ink-100"
           >
             See the campus

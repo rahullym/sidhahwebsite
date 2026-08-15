@@ -2,6 +2,7 @@
 import type { Course } from '../data/courses';
 import { chapterCount } from '../data/courses';
 import Photo from './Photo.astro';
+import { href } from '../lib/url';
 
 interface Props {
   course: Course;
@@ -44,7 +45,7 @@ const chapters = chapterCount(course);
         {course.level}
       </p>
       <h3 class="mt-1.5 text-xl leading-tight text-white sm:text-2xl">
-        <a href={`/courses/${course.slug}/`} class="after:absolute after:inset-0">
+        <a href={href(`/courses/${course.slug}/`)} class="after:absolute after:inset-0">
           {course.title}
         </a>
       </h3>

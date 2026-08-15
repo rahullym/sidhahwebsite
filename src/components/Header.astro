@@ -1,8 +1,9 @@
 ---
 import Logo from './Logo.astro';
 import { nav, contact } from '../data/site';
+import { href, routePath } from '../lib/url';
 
-const path = Astro.url.pathname;
+const path = routePath(Astro.url.pathname);
 
 /** Treat `/courses/some-slug/` as still being on the Programs tab. */
 function isActive(href: string): boolean {
@@ -33,7 +34,7 @@ function isActive(href: string): boolean {
   </div>
 
   <div class="container-page flex h-[4.5rem] items-center justify-between gap-4">
-    <a href="/" class="shrink-0" aria-label="Sidhah — home">
+    <a href={href("/")} class="shrink-0" aria-label="Sidhah — home">
       <Logo class="h-10 sm:h-12" />
     </a>
 
@@ -41,7 +42,7 @@ function isActive(href: string): boolean {
       {
         nav.map((item) => (
           <a
-            href={item.href}
+            href={href(item.href)}
             aria-current={isActive(item.href) ? 'page' : undefined}
             class={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
               isActive(item.href)
@@ -70,7 +71,7 @@ function isActive(href: string): boolean {
       </a>
 
       <a
-        href="/contact/"
+        href={href("/contact/")}
         class="hidden rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:inline-flex"
       >
         Book a campus visit
@@ -115,7 +116,7 @@ function isActive(href: string): boolean {
       {
         nav.map((item) => (
           <a
-            href={item.href}
+            href={href(item.href)}
             aria-current={isActive(item.href) ? 'page' : undefined}
             class={`rounded-lg px-3 py-3 text-base font-semibold ${
               isActive(item.href) ? 'text-brand-700' : 'text-ink-800'
@@ -126,7 +127,7 @@ function isActive(href: string): boolean {
         ))
       }
       <a
-        href="/contact/"
+        href={href("/contact/")}
         class="mt-2 rounded-xl bg-brand-600 px-5 py-3 text-center text-sm font-semibold text-white"
       >
         Book a campus visit
