@@ -39,10 +39,8 @@ const courseSchema = {
       name: contact.campus.name,
       address: {
         '@type': 'PostalAddress',
-        streetAddress: `${contact.campus.line1}, ${contact.campus.line2}`,
         addressLocality: contact.campus.city,
         addressRegion: contact.campus.state,
-        postalCode: contact.campus.pincode,
         addressCountry: 'IN',
       },
     },
@@ -126,7 +124,7 @@ const courseSchema = {
             <div class="flex items-center justify-between gap-4 py-3.5">
               <dt class="text-sm text-ink-600">Campus</dt>
               <dd class="text-right text-sm font-bold text-ink-900">
-                Infopark, Kakkanad
+                Kochi, Kerala
               </dd>
             </div>
             <div class="flex items-center justify-between gap-4 py-3.5">

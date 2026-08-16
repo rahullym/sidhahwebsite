@@ -46,12 +46,32 @@ const channels = [
     icon: 'M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 6a4 4 0 100 8 4 4 0 000-8z',
     filled: false,
   },
+  {
+    label: 'LinkedIn',
+    value: 'Sidhah Edutech',
+    detail: 'Hiring partners and placement news',
+    href: contact.linkedinHref,
+    external: true,
+    accent: 'bg-[#0A66C2]/12 text-[#0A66C2]',
+    icon: 'M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zM7.5 10.8V17M7.5 7.6h.01M11.6 17v-6.2m0 3.1a2.6 2.6 0 015.2 0V17',
+    filled: false,
+  },
+  {
+    label: 'Facebook',
+    value: 'Sidhah Edutech',
+    detail: 'Student stories and event updates',
+    href: contact.facebookHref,
+    external: true,
+    accent: 'bg-[#1877F2]/12 text-[#1877F2]',
+    icon: 'M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zM15.2 7.8h-1.4a2 2 0 00-2 2V18.6M9.4 12.6h4.8',
+    filled: false,
+  },
 ];
 ---
 
 <Base
   title="Contact"
-  description="Talk to Sidhah Edutech about classroom hospital administration programs at Infopark, Kakkanad. Call +91 7012644182, message on WhatsApp or email hr.sidhah@gmail.com."
+  description="Talk to Sidhah Edutech about classroom hospital administration programs in Kochi, Kerala. Call +91 7012644182, message on WhatsApp or email hr.sidhah@gmail.com."
 >
   <section class="hex-pattern border-b border-ink-100 bg-brand-50/60">
     <div class="container-page py-16 sm:py-20">
@@ -146,7 +166,7 @@ const channels = [
           <li>
             <a
               href={whatsappHref(
-                "Hi Sidhah, I'd like to book a campus visit at Infopark and sit in on a class.",
+                "Hi Sidhah, I'd like to book a campus visit in Kochi and sit in on a class.",
               )}
               target="_blank"
               rel="noopener noreferrer"
@@ -168,9 +188,7 @@ const channels = [
         <h2 class="text-2xl">Visit the campus</h2>
         <address class="mt-5 not-italic leading-relaxed text-ink-600">
           {contact.campus.name}<br />
-          {contact.campus.line1}<br />
-          {contact.campus.line2}<br />
-          {contact.campus.city}, {contact.campus.state} {contact.campus.pincode}
+          {contact.campus.full}
         </address>
 
         <a

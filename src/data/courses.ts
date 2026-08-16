@@ -137,7 +137,7 @@ export const courses: Course[] = [
     summary:
       'Our flagship one-year classroom program — 60 chapters across seven modules, from hospital operations to healthcare AI and analytics.',
     intro:
-      'A full year in the classroom, built for graduates who want to run hospital departments rather than assist in them. You move from how a hospital is structured, through the administrative and management functions that keep it running, into the analytics, AI and strategy work that increasingly decides which hospitals thrive. Every module is taught face to face at our Infopark campus, with hospital visits and a capstone project you present in person.',
+      'A full year in the classroom, built for graduates who want to run hospital departments rather than assist in them. You move from how a hospital is structured, through the administrative and management functions that keep it running, into the analytics, AI and strategy work that increasingly decides which hospitals thrive. Every module is taught face to face at our Kochi campus, with hospital visits and a capstone project you present in person.',
     featured: true,
     eligibility: [
       'Any degree — including B.Sc Nursing, Paramedical, Life Sciences, BBA, B.Com and B.A',
@@ -187,7 +187,7 @@ export const courses: Course[] = [
     summary:
       'The fastest route into a hospital admin role — 38 chapters across four modules, covering operations, administration, management and healthcare AI.',
     intro:
-      'Six months of classroom training for anyone who wants to be working in a hospital by the end of the year. It covers the same first four modules as the PG Diploma: how hospitals and their departments actually work, the administrative services that support them, core management theory, and the information systems and AI tools now standard in Indian hospitals. Taught in person at Infopark, with the same hospital exposure and placement support as the one-year program.',
+      'Six months of classroom training for anyone who wants to be working in a hospital by the end of the year. It covers the same first four modules as the PG Diploma: how hospitals and their departments actually work, the administrative services that support them, core management theory, and the information systems and AI tools now standard in Indian hospitals. Taught in person in Kochi, with the same hospital exposure and placement support as the one-year program.',
     featured: true,
     eligibility: [
       'Plus Two (+2) or any degree',

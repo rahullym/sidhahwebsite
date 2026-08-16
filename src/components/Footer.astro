@@ -1,6 +1,7 @@
 ---
 import Logo from './Logo.astro';
-import { nav, contact, site } from '../data/site';
+import SocialIcon from './SocialIcon.astro';
+import { nav, contact, site, socials } from '../data/site';
 import { courses } from '../data/courses';
 import { href } from '../lib/url';
 
@@ -13,22 +14,26 @@ const year = new Date().getFullYear();
       <div>
         <Logo variant="light" class="h-12" />
         <p class="mt-5 max-w-xs text-sm leading-relaxed text-ink-200/80">
-          Classroom-only hospital administration training at Infopark, Kochi.
+          Classroom-only hospital administration training in Kochi, Kerala.
           Small in-person batches, real hospital exposure, placement support.
         </p>
-        <a
-          href={contact.instagramHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="mt-6 inline-flex items-center gap-2 text-sm font-medium text-ink-200/80 transition-colors hover:text-white"
-        >
-          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="2" y="2" width="20" height="20" rx="5"></rect>
-            <circle cx="12" cy="12" r="4"></circle>
-            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle>
-          </svg>
-          @{contact.instagram}
-        </a>
+        <ul class="mt-6 flex items-center gap-3">
+          {
+            socials.map((social) => (
+              <li>
+                <a
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Sidhah Edutech on ${social.label}`}
+                  class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 text-ink-200/80 transition-colors hover:border-white/40 hover:text-white"
+                >
+                  <SocialIcon name={social.icon} />
+                </a>
+              </li>
+            ))
+          }
+        </ul>
       </div>
 
       <div>
@@ -68,11 +73,7 @@ const year = new Date().getFullYear();
       <div>
         <h2 class="text-sm font-bold uppercase tracking-wider text-white">Visit us</h2>
         <address class="mt-5 space-y-3 text-sm not-italic text-ink-200/80">
-          <p>
-            {contact.campus.line1}<br />
-            {contact.campus.line2}<br />
-            {contact.campus.city}, {contact.campus.state} {contact.campus.pincode}
-          </p>
+          <p>{contact.campus.full}</p>
           <p>
             <a href={contact.phoneHref} class="font-semibold text-white hover:text-brand-200">
               {contact.phone}
@@ -89,7 +90,7 @@ const year = new Date().getFullYear();
       class="mt-14 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-ink-300 sm:flex-row sm:items-center sm:justify-between"
     >
       <p>© {year} {site.legalName}. All rights reserved.</p>
-      <p>All programs are conducted in person at our Infopark campus.</p>
+      <p>All programs are conducted in person in Kochi.</p>
     </div>
   </div>
 </footer>

@@ -32,27 +32,21 @@ const facilities = [
   },
 ];
 
-const gettingHere = [
-  { from: 'Kakkanad', detail: 'Inside the Infopark campus — walkable from the South Gate.' },
-  { from: 'Edappally', detail: 'About 25 minutes by road via the Seaport–Airport Road.' },
-  { from: 'Vyttila', detail: 'Direct buses and autos to Infopark throughout the day.' },
-  { from: 'Aluva / Metro', detail: 'Metro to Kalamassery or Edappally, then bus or auto to Infopark.' },
-];
 ---
 
 <Base
   title="Campus"
-  description="Visit the Sidhah Edutech campus at Geo Infopark, 2nd Floor, Infopark Expressway, Kakkanad, Ernakulam — classrooms, computer lab and interview practice rooms."
+  description="Visit the Sidhah Edutech campus in Kochi, Kerala — classrooms, computer lab and interview practice rooms, all under one roof."
 >
   <section class="hex-pattern border-b border-ink-100 bg-brand-50/60">
     <div class="container-page py-16 sm:py-20">
       <p class="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">Our campus</p>
       <h1 class="mt-3 max-w-3xl text-4xl leading-tight sm:text-5xl">
-        One campus, at Infopark
+        One campus, in Kochi
       </h1>
       <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-600">
         Everything we teach happens here. Classes, labs, interview practice and
-        assessments all run from our floor at Geo Infopark in Kakkanad.
+        assessments all run from our campus in Kochi, Kerala.
       </p>
 
       <div class="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -93,10 +87,7 @@ const gettingHere = [
       <div class="rounded-4xl border border-ink-100 bg-white p-8 shadow-card">
         <h2 class="text-2xl">{contact.campus.name}</h2>
         <address class="mt-5 not-italic leading-relaxed text-ink-600">
-          {contact.campus.line1}<br />
-          {contact.campus.line2}<br />
-          {contact.campus.city}<br />
-          {contact.campus.state} {contact.campus.pincode}
+          {contact.campus.full}
         </address>
 
         <dl class="mt-8 space-y-3 border-t border-ink-100 pt-6">
@@ -126,8 +117,8 @@ const gettingHere = [
 
       <div class="overflow-hidden rounded-4xl border border-ink-100 shadow-card">
         <iframe
-          title="Map showing the Sidhah Edutech campus at Geo Infopark, Kakkanad"
-          src="https://maps.google.com/maps?q=Geo%20Infopark%20Kakkanad%20Kerala%20682030&t=&z=15&ie=UTF8&iwloc=&output=embed"
+          title="Map showing Kochi, Kerala"
+          src="https://maps.google.com/maps?q=Kochi%2C%20Kerala%2C%20India&t=&z=11&ie=UTF8&iwloc=&output=embed"
           class="h-[26rem] w-full border-0 lg:h-[32rem]"
           loading="lazy"
           referrerpolicy="no-referrer-when-downgrade"></iframe>
@@ -166,23 +157,10 @@ const gettingHere = [
     </div>
   </section>
 
-  <section class="container-page py-20 sm:py-24">
-    <SectionHeading eyebrow="Getting here" title="Reaching Infopark" align="left" />
-    <ul class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      {
-        gettingHere.map((route) => (
-          <li class="rounded-2xl border border-ink-100 bg-white p-6 shadow-card">
-            <p class="text-sm font-bold text-ink-900">{route.from}</p>
-            <p class="mt-2 text-sm leading-relaxed text-ink-600">{route.detail}</p>
-          </li>
-        ))
-      }
-    </ul>
-  </section>
 
   <EnquiryCTA
     title="Drop in and have a look"
     description="We are open Monday to Saturday. Message ahead and we will make sure a faculty member is free to show you around."
-    message="Hi Sidhah, I'd like to visit the Infopark campus. When would be a good time?"
+    message="Hi Sidhah, I'd like to visit the campus. When would be a good time?"
   />
 </Base>

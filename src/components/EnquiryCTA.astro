@@ -10,7 +10,7 @@ interface Props {
 
 const {
   title = 'Come see the classroom before you decide',
-  description = 'Walk into our Infopark campus, sit in on a session and meet the faculty. Message us on WhatsApp and we will hold a slot for you.',
+  description = 'Walk into our Kochi campus, sit in on a session and meet the faculty. Message us on WhatsApp and we will hold a slot for you.',
   message = "Hi Sidhah, I'd like to book a campus visit for the hospital administration program.",
 } = Astro.props;
 ---
@@ -70,7 +70,7 @@ const {
       </div>
 
       <p class="mt-6 text-sm text-ink-300">
-        {contact.campus.line1}, {contact.campus.city} · Mon–Sat, 9:30 AM – 6:00 PM
+        {contact.campus.full} · Mon–Sat, 9:30 AM – 6:00 PM
       </p>
     </div>
   </div>
