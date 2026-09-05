@@ -1,0 +1,198 @@
+---
+export const prerender = false;
+
+import Admin from '../../../layouts/Admin.astro';
+import { csrfToken } from '../../../lib/server/auth';
+import { getInvoice } from '../../../lib/server/invoices';
+import { amountInWords, formatDate, formatDateTime, formatPhone, formatRupees } from '../../../lib/format';
+import { site } from '../../../data/site';
+
+const user = Astro.locals.user!;
+const id = Number(Astro.params.id);
+const invoice = Number.isInteger(id) && id > 0 ? await getInvoice(id) : null;
+
+if (!invoice) return Astro.rewrite('/404');
+
+const justCreated = Astro.url.searchParams.has('created');
+const pdfUrl = `/admin/invoices/${invoice.id}.pdf`;
+const pdfFilename = `Invoice-${invoice.invoice_no}.pdf`;
+
+const whatsappMessage =
+  `Hello ${invoice.student_name}, here is your invoice ${invoice.invoice_no} from ${site.legalName} ` +
+  `for ${invoice.course_name} — ${formatRupees(invoice.amount)}. Thank you!`;
+const whatsappHref = `https://wa.me/${invoice.student_phone}?text=${encodeURIComponent(whatsappMessage)}`;
+
+const rows = [
+  { label: 'Invoice number', value: invoice.invoice_no, mono: true },
+  { label: 'Invoice date', value: formatDate(invoice.invoice_date) },
+  { label: 'Course', value: invoice.course_name },
+  { label: 'Amount', value: formatRupees(invoice.amount) },
+  { label: 'In words', value: amountInWords(invoice.amount) },
+  ...(invoice.notes ? [{ label: 'Note', value: invoice.notes }] : []),
+  { label: 'Issued by', value: `${invoice.created_by_name} · ${formatDateTime(invoice.created_at)}` },
+];
+---
+
+<Admin title={`Invoice ${invoice.invoice_no}`} user={user} csrf={csrfToken(Astro)} section="invoices">
+  <a href="/admin/invoices" class="text-sm font-semibold text-ink-400 hover:text-ink-900">← All invoices</a>
+
+  {
+    justCreated && (
+      <p class="mt-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 font-medium text-green-800">
+        <span aria-hidden="true">✓</span> Invoice {invoice.invoice_no} generated.
+      </p>
+    )
+  }
+
+  <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-3xl">{invoice.student_name}</h1>
+      <p class="mt-1.5 font-mono text-sm text-ink-400">{invoice.invoice_no}</p>
+    </div>
+    <p class="font-display text-3xl font-extrabold tracking-tight text-brand-800">{formatRupees(invoice.amount)}</p>
+  </div>
+
+  <div class="mt-6 flex flex-wrap gap-3">
+    <a
+      href={`${pdfUrl}?download`}
+      class="rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900"
+    >
+      Download PDF
+    </a>
+    <button
+      type="button"
+      id="share"
+      data-pdf={pdfUrl}
+      data-whatsapp={whatsappHref}
+      data-filename={pdfFilename}
+      class="rounded-xl bg-[#25D366] px-5 py-3 font-semibold text-white shadow-card transition hover:brightness-95"
+    >
+      Share on WhatsApp
+    </button>
+    <a
+      href="/admin/invoices/new"
+      class="rounded-xl border border-ink-200 bg-white px-5 py-3 font-semibold text-ink-800 transition hover:border-ink-300"
+    >
+      Create another
+    </a>
+  </div>
+  <p id="share-status" class="mt-3 text-sm text-ink-400" role="status"></p>
+
+  <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+    <div class="space-y-6">
+      <section class="rounded-2xl border border-ink-100 bg-white p-6 shadow-card">
+        <h2 class="text-lg">Student</h2>
+        <dl class="mt-4 space-y-3 text-sm">
+          <div class="flex gap-4">
+            <dt class="w-24 shrink-0 text-ink-400">Phone</dt>
+            <dd class="font-medium text-ink-900">
+              <a href={`tel:+${invoice.student_phone}`} class="hover:text-brand-600">
+                {formatPhone(invoice.student_phone)}
+              </a>
+            </dd>
+          </div>
+          {
+            invoice.student_email && (
+              <div class="flex gap-4">
+                <dt class="w-24 shrink-0 text-ink-400">Email</dt>
+                <dd class="font-medium break-all text-ink-900">{invoice.student_email}</dd>
+              </div>
+            )
+          }
+          {
+            invoice.student_address && (
+              <div class="flex gap-4">
+                <dt class="w-24 shrink-0 text-ink-400">Address</dt>
+                <dd class="font-medium whitespace-pre-line text-ink-900">{invoice.student_address}</dd>
+              </div>
+            )
+          }
+        </dl>
+      </section>
+
+      <section class="rounded-2xl border border-ink-100 bg-white p-6 shadow-card">
+        <h2 class="text-lg">Invoice</h2>
+        <dl class="mt-4 space-y-3 text-sm">
+          {
+            rows.map((row) => (
+              <div class="flex gap-4">
+                <dt class="w-24 shrink-0 text-ink-400">{row.label}</dt>
+                <dd class:list={['font-medium text-ink-900', row.mono && 'font-mono']}>{row.value}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+    </div>
+
+    <section class="rounded-2xl border border-ink-100 bg-white p-3 shadow-card">
+      <!-- The real PDF, not an HTML mock-up of it: what staff preview is byte-for-byte
+           what sends. Mobile browsers refuse to render a PDF in an iframe, so below
+           `lg` they get a link that opens it in the device's own viewer instead. -->
+      <iframe
+        src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=page-width`}
+        title={`Preview of invoice ${invoice.invoice_no}`}
+        class="hidden h-[760px] w-full rounded-xl border border-ink-100 bg-ink-50 lg:block"
+        loading="lazy"></iframe>
+
+      <a
+        href={pdfUrl}
+        target="_blank"
+        rel="noopener"
+        class="flex items-center gap-4 rounded-xl border border-dashed border-ink-200 px-5 py-6 transition hover:border-brand-300 hover:bg-brand-50 lg:hidden"
+      >
+        <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-lg" aria-hidden="true">📄</span>
+        <span>
+          <span class="block font-semibold text-ink-900">Preview the invoice</span>
+          <span class="block text-sm text-ink-400">Opens {pdfFilename} in a new tab.</span>
+        </span>
+      </a>
+    </section>
+  </div>
+</Admin>
+
+<script>
+  const button = document.getElementById('share') as HTMLButtonElement | null;
+  const status = document.getElementById('share-status');
+
+  /**
+   * Mobile gets the native share sheet with the PDF attached, which is the only
+   * way a web page can hand WhatsApp a real file. Desktop has no such API, so it
+   * falls back to opening the chat with a prefilled message; staff attach the
+   * PDF they downloaded. Nothing is sent without the staff member confirming.
+   */
+  button?.addEventListener('click', async () => {
+    const pdfUrl = button.dataset.pdf!;
+    const whatsapp = button.dataset.whatsapp!;
+    const filename = button.dataset.filename!;
+    const say = (message: string) => status && (status.textContent = message);
+
+    if (navigator.share) {
+      button.disabled = true;
+      say('Preparing the PDF…');
+      try {
+        const response = await fetch(pdfUrl);
+        if (!response.ok) throw new Error(String(response.status));
+        const file = new File([await response.blob()], filename, { type: 'application/pdf' });
+
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          say('Shared.');
+          return;
+        }
+      } catch (error) {
+        // AbortError just means the staff member closed the share sheet.
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          say('');
+          return;
+        }
+        console.error(error);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    say('Opening WhatsApp — attach the downloaded PDF to the chat.');
+    window.open(whatsapp, '_blank', 'noopener');
+  });
+</script>

@@ -1,0 +1,166 @@
+---
+export const prerender = false;
+
+import Admin from '../../layouts/Admin.astro';
+import { checkCsrf, csrfToken, hashPassword } from '../../lib/server/auth';
+import { db } from '../../lib/server/db';
+import { formatDateTime } from '../../lib/format';
+
+const user = Astro.locals.user!;
+// Creating logins is an admin-only power; staff accounts cannot escalate.
+if (user.role !== 'admin') return Astro.redirect('/admin');
+
+let error = '';
+let notice = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+
+  if (!checkCsrf(Astro, form.get('csrf'))) {
+    error = 'Your session expired. Please try again.';
+  } else if (action === 'add') {
+    const username = String(form.get('username') ?? '').trim();
+    const fullName = String(form.get('fullName') ?? '').trim();
+    const password = String(form.get('password') ?? '');
+    const role = String(form.get('role') ?? 'staff') === 'admin' ? 'admin' : 'staff';
+
+    if (!/^[a-z0-9._-]{3,32}$/i.test(username)) {
+      error = 'Username must be 3–32 characters: letters, numbers, dot, dash or underscore.';
+    } else if (!fullName) {
+      error = 'Enter the staff member’s full name — it is printed on every invoice they issue.';
+    } else if (password.length < 10) {
+      error = 'Choose a password of at least 10 characters.';
+    } else {
+      const inserted = await db`
+        insert into users (username, full_name, password_hash, role)
+        values (${username}, ${fullName}, ${await hashPassword(password)}, ${role})
+        on conflict do nothing returning id
+      `;
+      if (inserted.length === 0) error = `The username “${username}” is taken.`;
+      else notice = `Created a ${role} login for ${fullName}.`;
+    }
+  } else if (action === 'toggle') {
+    const id = Number(form.get('id'));
+    if (id === user.id) {
+      error = 'You cannot disable your own account.';
+    } else {
+      const [row] = await db<{ full_name: string; active: boolean }>`
+        update users set active = not active, failed_attempts = 0, locked_until = null
+        where id = ${id} returning full_name, active
+      `;
+      if (row) notice = `${row.full_name} can ${row.active ? 'now' : 'no longer'} log in.`;
+    }
+  } else if (action === 'unlock') {
+    const id = Number(form.get('id'));
+    const [row] = await db<{ full_name: string }>`
+      update users set failed_attempts = 0, locked_until = null where id = ${id} returning full_name
+    `;
+    if (row) notice = `Unlocked ${row.full_name}.`;
+  }
+}
+
+const staff = await db<{
+  id: number;
+  username: string;
+  full_name: string;
+  role: string;
+  active: boolean;
+  locked_until: string | null;
+  last_login_at: string | null;
+}>`select id, username, full_name, role, active, locked_until, last_login_at from users order by active desc, full_name`;
+
+const field =
+  'w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100';
+const csrf = csrfToken(Astro);
+const now = Date.now();
+---
+
+<Admin title="Staff" user={user} csrf={csrf} section="users">
+  <h1 class="text-3xl">Staff logins</h1>
+  <p class="mt-1.5 text-ink-400">
+    Everyone who issues invoices needs their own login — the issuer’s name is printed on the PDF.
+  </p>
+
+  {error && <p role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
+  {notice && <p class="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">{notice}</p>}
+
+  <form method="post" class="mt-6 grid gap-3 rounded-2xl border border-ink-100 bg-white p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
+    <input type="hidden" name="csrf" value={csrf} />
+    <input type="hidden" name="action" value="add" />
+    <div>
+      <label for="fullName" class="mb-1.5 block text-xs font-semibold tracking-wide text-ink-400 uppercase">Full name</label>
+      <input id="fullName" name="fullName" required class={field} />
+    </div>
+    <div>
+      <label for="username" class="mb-1.5 block text-xs font-semibold tracking-wide text-ink-400 uppercase">Username</label>
+      <input id="username" name="username" required autocapitalize="none" class={field} />
+    </div>
+    <div>
+      <label for="password" class="mb-1.5 block text-xs font-semibold tracking-wide text-ink-400 uppercase">
+        Password
+      </label>
+      <input id="password" name="password" type="text" required minlength="10" class={field} />
+    </div>
+    <div>
+      <label for="role" class="mb-1.5 block text-xs font-semibold tracking-wide text-ink-400 uppercase">Role</label>
+      <div class="flex gap-2">
+        <select id="role" name="role" class:list={[field, 'bg-white']}>
+          <option value="staff">Staff</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button type="submit" class="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-900">
+          Add
+        </button>
+      </div>
+    </div>
+    <p class="text-xs text-ink-400 sm:col-span-2 lg:col-span-4">
+      The password is shown in plain text so you can pass it on, then it is stored only as a hash. Ask them to change it later by having an admin recreate the login.
+    </p>
+  </form>
+
+  <ul class="mt-6 divide-y divide-ink-100 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-card">
+    {
+      staff.map((member) => {
+        const locked = member.locked_until && new Date(member.locked_until).getTime() > now;
+        return (
+          <li class="flex flex-wrap items-center gap-3 px-5 py-4">
+            <div class="min-w-0 flex-1">
+              <p class:list={['font-semibold', member.active ? 'text-ink-900' : 'text-ink-400 line-through']}>
+                {member.full_name}
+                {member.id === user.id && <span class="ml-2 text-xs font-medium text-ink-400">(you)</span>}
+              </p>
+              <p class="text-sm text-ink-400">
+                {member.username} · {member.role}
+                {member.last_login_at ? ` · last login ${formatDateTime(member.last_login_at)}` : ' · never logged in'}
+              </p>
+            </div>
+            {locked && (
+              <span class="rounded-full bg-gold-50 px-2.5 py-1 text-xs font-semibold text-gold-700">Locked</span>
+            )}
+            {locked && (
+              <form method="post">
+                <input type="hidden" name="csrf" value={csrf} />
+                <input type="hidden" name="action" value="unlock" />
+                <input type="hidden" name="id" value={String(member.id)} />
+                <button type="submit" class="rounded-lg border border-ink-200 px-3 py-1.5 text-sm font-semibold text-ink-600 hover:border-ink-300">
+                  Unlock
+                </button>
+              </form>
+            )}
+            {member.id !== user.id && (
+              <form method="post">
+                <input type="hidden" name="csrf" value={csrf} />
+                <input type="hidden" name="action" value="toggle" />
+                <input type="hidden" name="id" value={String(member.id)} />
+                <button type="submit" class="rounded-lg border border-ink-200 px-3 py-1.5 text-sm font-semibold text-ink-600 hover:border-ink-300">
+                  {member.active ? 'Disable' : 'Enable'}
+                </button>
+              </form>
+            )}
+          </li>
+        );
+      })
+    }
+  </ul>
+</Admin>

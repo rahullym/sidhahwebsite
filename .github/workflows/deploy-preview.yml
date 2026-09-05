@@ -32,6 +32,12 @@ jobs:
 
       - run: npm ci
 
+      # GitHub Pages is static hosting and has no database, so the staff
+      # dashboard cannot run here. Removing the routes keeps the preview a pure
+      # marketing build — and guarantees no admin page is ever published to a
+      # host that cannot authenticate it.
+      - run: rm -rf src/pages/admin src/middleware.ts
+
       # `npm run build` runs astro check first, so a type error fails the deploy.
       - run: npm run build
         env:

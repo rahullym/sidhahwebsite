@@ -1,0 +1,89 @@
+---
+export const prerender = false;
+
+import Admin from '../../layouts/Admin.astro';
+import { csrfToken } from '../../lib/server/auth';
+import { dashboardStats } from '../../lib/server/invoices';
+import { formatDate, formatRupees, formatPhone } from '../../lib/format';
+
+const user = Astro.locals.user!;
+const { totalInvoices, thisMonth, thisMonthValue, recent } = await dashboardStats();
+
+const stats = [
+  { label: 'Invoices generated', value: String(totalInvoices) },
+  { label: 'This month', value: String(thisMonth) },
+  { label: 'Billed this month', value: formatRupees(thisMonthValue) },
+];
+
+const firstName = user.fullName.split(/\s+/)[0];
+---
+
+<Admin title="Dashboard" user={user} csrf={csrfToken(Astro)} section="dashboard">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-3xl">Hello, {firstName}</h1>
+      <p class="mt-1.5 text-ink-400">Create an invoice, or look one up to send again.</p>
+    </div>
+    <a
+      href="/admin/invoices/new"
+      class="rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900"
+    >
+      + Create new invoice
+    </a>
+  </div>
+
+  <dl class="mt-8 grid gap-4 sm:grid-cols-3">
+    {
+      stats.map((stat) => (
+        <div class="rounded-2xl border border-ink-100 bg-white p-5 shadow-card">
+          <dt class="text-sm font-medium text-ink-400">{stat.label}</dt>
+          <dd class="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink-900">{stat.value}</dd>
+        </div>
+      ))
+    }
+  </dl>
+
+  <section class="mt-10">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="text-xl">Recent invoices</h2>
+      <a href="/admin/invoices" class="text-sm font-semibold text-brand-600 hover:text-brand-800">
+        View all →
+      </a>
+    </div>
+
+    {
+      recent.length === 0 ? (
+        <div class="mt-4 rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-14 text-center">
+          <p class="font-semibold text-ink-900">No invoices yet</p>
+          <p class="mt-1 text-sm text-ink-400">The first invoice you generate will appear here.</p>
+          <a
+            href="/admin/invoices/new"
+            class="mt-5 inline-block rounded-xl bg-brand-800 px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            Create the first invoice
+          </a>
+        </div>
+      ) : (
+        <ul class="mt-4 divide-y divide-ink-100 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-card">
+          {recent.map((invoice) => (
+            <li>
+              <a href={`/admin/invoices/${invoice.id}`} class="flex items-center gap-4 px-5 py-4 transition hover:bg-ink-50">
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-semibold text-ink-900">{invoice.student_name}</p>
+                  <p class="truncate text-sm text-ink-400">
+                    {invoice.course_name} · {formatPhone(invoice.student_phone)}
+                  </p>
+                </div>
+                <div class="hidden text-right sm:block">
+                  <p class="font-mono text-xs text-ink-400">{invoice.invoice_no}</p>
+                  <p class="text-sm text-ink-400">{formatDate(invoice.invoice_date)}</p>
+                </div>
+                <p class="w-28 shrink-0 text-right font-semibold text-ink-900">{formatRupees(invoice.amount)}</p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+</Admin>

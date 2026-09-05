@@ -1,0 +1,256 @@
+---
+export const prerender = false;
+
+import Admin from '../../../layouts/Admin.astro';
+import { checkCsrf, csrfToken } from '../../../lib/server/auth';
+import {
+  createInvoice,
+  listCourses,
+  readInvoiceForm,
+  validateInvoice,
+  type Errors,
+  type InvoiceInput,
+} from '../../../lib/server/invoices';
+import { todayInIndia } from '../../../lib/format';
+
+const user = Astro.locals.user!;
+const courses = await listCourses();
+
+let errors: Errors = {};
+let form: InvoiceInput = {
+  studentName: '',
+  phone: '',
+  email: '',
+  address: '',
+  courseId: '',
+  amount: '',
+  invoiceDate: todayInIndia(),
+  notes: '',
+};
+let failure = '';
+
+if (Astro.request.method === 'POST') {
+  const data = await Astro.request.formData();
+  form = readInvoiceForm(data);
+
+  if (!checkCsrf(Astro, data.get('csrf'))) {
+    failure = 'Your session expired. Check the details below and save again.';
+  } else {
+    errors = validateInvoice(form, courses);
+    if (Object.keys(errors).length === 0) {
+      try {
+        const invoice = await createInvoice(form, user);
+        // Redirect after POST so a refresh on the result page cannot duplicate
+        // the invoice — and the number in the URL is the permanent record.
+        return Astro.redirect(`/admin/invoices/${invoice.id}?created=1`, 303);
+      } catch (error) {
+        console.error('Invoice creation failed', error);
+        failure = 'Could not save the invoice. Please try again.';
+      }
+    }
+  }
+}
+
+const field =
+  'w-full rounded-xl border px-3.5 py-2.5 text-ink-900 outline-none transition focus:ring-2 focus:ring-brand-100';
+const ok = 'border-ink-200 focus:border-brand-600';
+const bad = 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-100';
+const label = 'mb-1.5 block text-sm font-semibold text-ink-800';
+const hint = 'mt-1.5 text-sm font-medium text-red-700';
+
+/** Prefills the amount box when a course has a standard fee, without locking it. */
+const courseAmounts = Object.fromEntries(
+  courses.filter((c) => c.default_amount).map((c) => [String(c.id), Number(c.default_amount).toFixed(2)]),
+);
+---
+
+<Admin title="New invoice" user={user} csrf={csrfToken(Astro)} section="invoices">
+  <a href="/admin/invoices" class="text-sm font-semibold text-ink-400 hover:text-ink-900">← All invoices</a>
+  <h1 class="mt-3 text-3xl">Create invoice</h1>
+  <p class="mt-1.5 text-ink-400">
+    The invoice number and date fill in automatically. Fields marked * are required.
+  </p>
+
+  {
+    courses.length === 0 && (
+      <p class="mt-6 rounded-xl border border-gold-300 bg-gold-50 px-4 py-3 text-sm font-medium text-gold-700">
+        No active courses yet. <a href="/admin/courses" class="underline">Add a course</a> before creating an invoice.
+      </p>
+    )
+  }
+
+  {
+    failure && (
+      <p role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+        {failure}
+      </p>
+    )
+  }
+
+  <form method="post" class="mt-8 space-y-8" novalidate>
+    <input type="hidden" name="csrf" value={csrfToken(Astro)} />
+
+    <section class="rounded-2xl border border-ink-100 bg-white p-6 shadow-card">
+      <h2 class="text-lg">Student information</h2>
+
+      <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label for="studentName" class={label}>Student name *</label>
+          <input
+            id="studentName"
+            name="studentName"
+            value={form.studentName}
+            autocomplete="off"
+            aria-invalid={errors.studentName ? 'true' : undefined}
+            aria-describedby={errors.studentName ? 'studentName-error' : undefined}
+            class:list={[field, errors.studentName ? bad : ok]}
+          />
+          {errors.studentName && <p id="studentName-error" class={hint}>{errors.studentName}</p>}
+        </div>
+
+        <div>
+          <label for="phone" class={label}>Phone number *</label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputmode="tel"
+            value={form.phone}
+            placeholder="70126 44182"
+            aria-invalid={errors.phone ? 'true' : undefined}
+            aria-describedby={errors.phone ? 'phone-error' : 'phone-hint'}
+            class:list={[field, errors.phone ? bad : ok]}
+          />
+          {
+            errors.phone ? (
+              <p id="phone-error" class={hint}>{errors.phone}</p>
+            ) : (
+              <p id="phone-hint" class="mt-1.5 text-xs text-ink-400">Used for WhatsApp. +91 is assumed.</p>
+            )
+          }
+        </div>
+
+        <div>
+          <label for="email" class={label}>Email address</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            value={form.email}
+            autocomplete="off"
+            aria-invalid={errors.email ? 'true' : undefined}
+            class:list={[field, errors.email ? bad : ok]}
+          />
+          {errors.email && <p class={hint}>{errors.email}</p>}
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="address" class={label}>Address</label>
+          <textarea
+            id="address"
+            name="address"
+            rows="2"
+            class:list={[field, errors.address ? bad : ok]}>{form.address}</textarea
+          >
+          {errors.address && <p class={hint}>{errors.address}</p>}
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-ink-100 bg-white p-6 shadow-card">
+      <h2 class="text-lg">Course &amp; amount</h2>
+
+      <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div>
+          <label for="courseId" class={label}>Course *</label>
+          <select
+            id="courseId"
+            name="courseId"
+            aria-invalid={errors.courseId ? 'true' : undefined}
+            class:list={[field, errors.courseId ? bad : ok, 'bg-white']}
+          >
+            <option value="">Select a course…</option>
+            {
+              courses.map((course) => (
+                <option value={String(course.id)} selected={form.courseId === String(course.id)}>
+                  {course.name}
+                </option>
+              ))
+            }
+          </select>
+          {errors.courseId && <p class={hint}>{errors.courseId}</p>}
+        </div>
+
+        <div>
+          <label for="amount" class={label}>Amount (₹) *</label>
+          <input
+            id="amount"
+            name="amount"
+            type="text"
+            inputmode="decimal"
+            value={form.amount}
+            placeholder="25000"
+            aria-invalid={errors.amount ? 'true' : undefined}
+            class:list={[field, errors.amount ? bad : ok]}
+          />
+          {errors.amount && <p class={hint}>{errors.amount}</p>}
+        </div>
+
+        <div>
+          <label for="invoiceDate" class={label}>Invoice date</label>
+          <input
+            id="invoiceDate"
+            name="invoiceDate"
+            type="date"
+            value={form.invoiceDate}
+            class:list={[field, errors.invoiceDate ? bad : ok]}
+          />
+          {errors.invoiceDate && <p class={hint}>{errors.invoiceDate}</p>}
+        </div>
+
+        <div>
+          <label for="invoiceNo" class={label}>Invoice number</label>
+          <input
+            id="invoiceNo"
+            value="Generated on save"
+            disabled
+            class="w-full rounded-xl border border-dashed border-ink-200 bg-ink-50 px-3.5 py-2.5 text-ink-400"
+          />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="notes" class={label}>Note on the invoice</label>
+          <input
+            id="notes"
+            name="notes"
+            value={form.notes}
+            placeholder="e.g. First instalment of two"
+            class:list={[field, errors.notes ? bad : ok]}
+          />
+          {errors.notes && <p class={hint}>{errors.notes}</p>}
+        </div>
+      </div>
+    </section>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <button
+        type="submit"
+        class="rounded-xl bg-brand-800 px-6 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900 disabled:opacity-50"
+        disabled={courses.length === 0}
+      >
+        Generate invoice
+      </button>
+      <a href="/admin" class="rounded-xl px-4 py-3 font-semibold text-ink-400 hover:text-ink-900">Cancel</a>
+    </div>
+  </form>
+</Admin>
+
+<script is:inline define:vars={{ courseAmounts }}>
+  const course = document.getElementById('courseId');
+  const amount = document.getElementById('amount');
+  course?.addEventListener('change', () => {
+    const preset = courseAmounts[course.value];
+    // Never overwrite a figure the staff member has already typed.
+    if (preset && !amount.value.trim()) amount.value = preset;
+  });
+</script>

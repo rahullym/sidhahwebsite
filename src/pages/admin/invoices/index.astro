@@ -1,0 +1,167 @@
+---
+export const prerender = false;
+
+import Admin from '../../../layouts/Admin.astro';
+import { csrfToken } from '../../../lib/server/auth';
+import { searchInvoices } from '../../../lib/server/invoices';
+import { formatDate, formatPhone, formatRupees } from '../../../lib/format';
+
+const user = Astro.locals.user!;
+const params = Astro.url.searchParams;
+
+const q = params.get('q')?.trim() ?? '';
+const from = params.get('from') ?? '';
+const to = params.get('to') ?? '';
+const page = Number(params.get('page')) || 1;
+
+const { invoices, total, pages } = await searchInvoices({ q, from, to, page });
+const filtered = Boolean(q || from || to);
+
+/** Keeps the current filters on the page links. */
+function pageHref(target: number): string {
+  const next = new URLSearchParams();
+  if (q) next.set('q', q);
+  if (from) next.set('from', from);
+  if (to) next.set('to', to);
+  if (target > 1) next.set('page', String(target));
+  const query = next.toString();
+  return query ? `/admin/invoices?${query}` : '/admin/invoices';
+}
+
+const field =
+  'w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100';
+---
+
+<Admin title="Invoices" user={user} csrf={csrfToken(Astro)} section="invoices">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-3xl">Invoices</h1>
+      <p class="mt-1.5 text-ink-400">
+        {total} invoice{total === 1 ? '' : 's'}{filtered ? ' matching your filters' : ' generated so far'}.
+      </p>
+    </div>
+    <a
+      href="/admin/invoices/new"
+      class="rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900"
+    >
+      + Create new invoice
+    </a>
+  </div>
+
+  <form method="get" class="mt-6 grid gap-3 rounded-2xl border border-ink-100 bg-white p-4 shadow-card sm:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
+    <div>
+      <label for="q" class="mb-1.5 block text-xs font-semibold tracking-wide text-ink-400 uppercase">Search</label>
+      <input
+        id="q"
+        name="q"
+        value={q}
+        placeholder="Name, phone or invoice number"
+        class={field}
+      />
+    </div>
+    <div>
+      <label for="from" class="mb-1.5 block text-xs font-semibold tracking-wide text-ink-400 uppercase">From</label>
+      <input id="from" name="from" type="date" value={from} class={field} />
+    </div>
+    <div>
+      <label for="to" class="mb-1.5 block text-xs font-semibold tracking-wide text-ink-400 uppercase">To</label>
+      <input id="to" name="to" type="date" value={to} class={field} />
+    </div>
+    <div class="flex items-end gap-2">
+      <button type="submit" class="rounded-xl bg-ink-900 px-5 py-2.5 font-semibold text-white transition hover:bg-ink-800">
+        Search
+      </button>
+      {
+        filtered && (
+          <a href="/admin/invoices" class="rounded-xl px-3 py-2.5 text-sm font-semibold text-ink-400 hover:text-ink-900">
+            Clear
+          </a>
+        )
+      }
+    </div>
+  </form>
+
+  {
+    invoices.length === 0 ? (
+      <div class="mt-6 rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-14 text-center">
+        <p class="font-semibold text-ink-900">{filtered ? 'No invoices match those filters' : 'No invoices yet'}</p>
+        <p class="mt-1 text-sm text-ink-400">
+          {filtered ? 'Try a different name, phone number or date range.' : 'The first invoice you generate will appear here.'}
+        </p>
+      </div>
+    ) : (
+      <div class="mt-6 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-card">
+        <table class="w-full text-left text-sm">
+          <thead class="border-b border-ink-100 bg-ink-50 text-xs tracking-wide text-ink-400 uppercase">
+            <tr>
+              <th scope="col" class="px-5 py-3 font-semibold">Invoice</th>
+              <th scope="col" class="px-5 py-3 font-semibold">Student</th>
+              <th scope="col" class="hidden px-5 py-3 font-semibold md:table-cell">Course</th>
+              <th scope="col" class="hidden px-5 py-3 font-semibold sm:table-cell">Date</th>
+              <th scope="col" class="px-5 py-3 text-right font-semibold">Amount</th>
+              <th scope="col" class="px-5 py-3"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ink-100">
+            {invoices.map((invoice) => (
+              <tr class="transition hover:bg-ink-50">
+                <td class="px-5 py-3.5 font-mono text-xs whitespace-nowrap text-ink-600">
+                  <a href={`/admin/invoices/${invoice.id}`} class="hover:text-brand-600">{invoice.invoice_no}</a>
+                </td>
+                <td class="px-5 py-3.5">
+                  <a href={`/admin/invoices/${invoice.id}`} class="font-semibold text-ink-900 hover:text-brand-600">
+                    {invoice.student_name}
+                  </a>
+                  <span class="block text-xs text-ink-400">{formatPhone(invoice.student_phone)}</span>
+                </td>
+                <td class="hidden max-w-[16rem] truncate px-5 py-3.5 text-ink-600 md:table-cell">{invoice.course_name}</td>
+                <td class="hidden px-5 py-3.5 whitespace-nowrap text-ink-600 sm:table-cell">
+                  {formatDate(invoice.invoice_date)}
+                </td>
+                <td class="px-5 py-3.5 text-right font-semibold whitespace-nowrap text-ink-900">
+                  {formatRupees(invoice.amount)}
+                </td>
+                <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                  <a
+                    href={`/admin/invoices/${invoice.id}.pdf?download`}
+                    class="font-semibold text-brand-600 hover:text-brand-800"
+                  >
+                    PDF
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  {
+    pages > 1 && (
+      <nav class="mt-6 flex items-center justify-between" aria-label="Pagination">
+        <a
+          href={pageHref(page - 1)}
+          aria-disabled={page <= 1}
+          class:list={[
+            'rounded-xl border border-ink-200 bg-white px-4 py-2 text-sm font-semibold',
+            page <= 1 ? 'pointer-events-none opacity-40' : 'hover:border-ink-300',
+          ]}
+        >
+          ← Previous
+        </a>
+        <p class="text-sm text-ink-400">Page {page} of {pages}</p>
+        <a
+          href={pageHref(page + 1)}
+          aria-disabled={page >= pages}
+          class:list={[
+            'rounded-xl border border-ink-200 bg-white px-4 py-2 text-sm font-semibold',
+            page >= pages ? 'pointer-events-none opacity-40' : 'hover:border-ink-300',
+          ]}
+        >
+          Next →
+        </a>
+      </nav>
+    )
+  }
+</Admin>

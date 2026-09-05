@@ -1,0 +1,27 @@
+# Local stand-in for Neon: plain Postgres plus Neon's HTTP proxy, so the same
+# @neondatabase/serverless client works offline and in production unchanged.
+# Start with `npm run db:up`, then `npm run db:setup`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sidhah
+    ports: ["55432:5432"]
+    # Named volume so `npm run db:down` does not wipe local invoices.
+    volumes: [sidhah-pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      retries: 20
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    environment:
+      PG_CONNECTION_STRING: postgres://postgres:postgres@postgres:5432/sidhah
+    ports: ["54330:4444"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  sidhah-pgdata:

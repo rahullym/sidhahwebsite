@@ -1,0 +1,120 @@
+---
+export const prerender = false;
+
+import '../../styles/global.css';
+import Logo from '../../components/Logo.astro';
+import { site } from '../../data/site';
+import { attemptLogin, checkCsrf, csrfToken, setSessionCookie } from '../../lib/server/auth';
+
+/** Only ever redirect within this site — an open redirect here would be a phishing gift. */
+function safeNext(value: string | null): string {
+  if (!value || !value.startsWith('/admin') || value.startsWith('//')) return '/admin';
+  return value;
+}
+
+const next = safeNext(Astro.url.searchParams.get('next'));
+let error = '';
+let username = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  username = String(form.get('username') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+
+  if (!checkCsrf(Astro, form.get('csrf'))) {
+    error = 'Your session expired. Please try again.';
+  } else if (!username || !password) {
+    error = 'Enter both your username and password.';
+  } else {
+    const result = await attemptLogin(username, password);
+    if (result.ok) {
+      setSessionCookie(Astro, result.user.id);
+      return Astro.redirect(safeNext(String(form.get('next') ?? next)), 303);
+    }
+    error = result.error;
+  }
+}
+
+// Generated after the cookie may have changed, so the token always matches.
+const csrf = csrfToken(Astro);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Staff login · {site.name}</title>
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+    />
+  </head>
+  <body class="grid min-h-screen place-items-center bg-ink-950 px-4 py-10">
+    <div class="w-full max-w-sm">
+      <div class="rounded-3xl bg-white p-8 shadow-lift">
+        <a href="/" class="inline-block"><Logo class="h-9 w-auto" /></a>
+        <h1 class="mt-6 text-2xl">Staff login</h1>
+        <p class="mt-1.5 text-sm text-ink-400">Invoice dashboard — authorised staff only.</p>
+
+        {
+          error && (
+            <p
+              role="alert"
+              class="mt-5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm font-medium text-red-800"
+            >
+              {error}
+            </p>
+          )
+        }
+
+        <form method="post" class="mt-6 space-y-4">
+          <input type="hidden" name="csrf" value={csrf} />
+          <input type="hidden" name="next" value={next} />
+
+          <div>
+            <label for="username" class="mb-1.5 block text-sm font-semibold text-ink-800">Username</label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={username}
+              required
+              autocomplete="username"
+              autocapitalize="none"
+              autofocus
+              class="w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+
+          <div>
+            <label for="password" class="mb-1.5 block text-sm font-semibold text-ink-800">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+              class="w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-xl bg-brand-800 px-4 py-3 font-semibold text-white transition hover:bg-brand-900 focus:ring-2 focus:ring-brand-300 focus:ring-offset-2 focus:outline-none"
+          >
+            Log in
+          </button>
+        </form>
+      </div>
+
+      <p class="mt-6 text-center text-sm text-ink-300">
+        <a href="/" class="hover:text-white">← Back to {site.url.replace(/^https?:\/\//, '')}</a>
+      </p>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,118 @@
+---
+import '../styles/global.css';
+import { site } from '../data/site';
+import Logo from '../components/Logo.astro';
+import type { SessionUser } from '../lib/server/auth';
+
+interface Props {
+  title: string;
+  user: SessionUser;
+  csrf: string;
+  /** Which nav item to mark current. */
+  section?: 'dashboard' | 'invoices' | 'courses' | 'users';
+}
+
+const { title, user, csrf, section } = Astro.props;
+
+const nav = [
+  { key: 'dashboard', label: 'Dashboard', href: '/admin' },
+  { key: 'invoices', label: 'Invoices', href: '/admin/invoices' },
+  { key: 'courses', label: 'Courses', href: '/admin/courses' },
+  ...(user.role === 'admin' ? [{ key: 'users', label: 'Staff', href: '/admin/users' }] : []),
+];
+
+const initials = user.fullName
+  .split(/\s+/)
+  .slice(0, 2)
+  .map((part) => part[0]?.toUpperCase() ?? '')
+  .join('');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} · {site.name} staff</title>
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+    />
+  </head>
+  <body class="min-h-screen bg-ink-50">
+    <header class="sticky top-0 z-20 border-b border-ink-100 bg-white/95 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
+        <a href="/admin" class="shrink-0" aria-label="Sidhah staff dashboard">
+          <Logo class="h-8 w-auto" />
+        </a>
+        <span class="hidden rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-brand-700 uppercase sm:inline">
+          Staff
+        </span>
+
+        <nav class="ml-auto hidden items-center gap-1 md:flex" aria-label="Dashboard">
+          {
+            nav.map((item) => (
+              <a
+                href={item.href}
+                aria-current={section === item.key ? 'page' : undefined}
+                class:list={[
+                  'rounded-lg px-3 py-2 text-sm font-medium transition',
+                  section === item.key
+                    ? 'bg-brand-50 text-brand-700'
+                    : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900',
+                ]}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+
+        <div class="ml-auto flex items-center gap-3 md:ml-4">
+          <div class="hidden text-right sm:block">
+            <p class="text-sm leading-tight font-semibold text-ink-900">{user.fullName}</p>
+            <p class="text-xs text-ink-400 capitalize">{user.role}</p>
+          </div>
+          <span
+            class="grid size-9 place-items-center rounded-full bg-brand-800 text-sm font-bold text-white"
+            aria-hidden="true">{initials}</span
+          >
+          <form method="post" action="/admin/logout">
+            <input type="hidden" name="csrf" value={csrf} />
+            <button
+              type="submit"
+              class="rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-600 transition hover:border-ink-300 hover:text-ink-900"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <nav class="flex gap-1 overflow-x-auto border-t border-ink-100 px-4 py-2 md:hidden" aria-label="Dashboard">
+        {
+          nav.map((item) => (
+            <a
+              href={item.href}
+              aria-current={section === item.key ? 'page' : undefined}
+              class:list={[
+                'shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium',
+                section === item.key ? 'bg-brand-50 text-brand-700' : 'text-ink-600',
+              ]}
+            >
+              {item.label}
+            </a>
+          ))
+        }
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <slot />
+    </main>
+  </body>
+</html>
