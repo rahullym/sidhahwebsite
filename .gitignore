@@ -3,8 +3,9 @@ dist/
 .astro/
 .DS_Store
 *.log
-.env
-.env.production
 .vercel
 .netlify
-.env.local
+
+# Every local env file is private. .env.example is the tracked template.
+.env*
+!.env.example
