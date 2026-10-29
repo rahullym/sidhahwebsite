@@ -9,3 +9,6 @@ dist/
 # Every local env file is private. .env.example is the tracked template.
 .env*
 !.env.example
+
+# Personal Claude Code settings
+.claude/settings.local.json

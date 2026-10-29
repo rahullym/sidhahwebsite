@@ -56,7 +56,24 @@ function text(
   return width;
 }
 
-/** Greedy wrap. Returns the y position below the last line drawn. */
+/** Greedy word wrap into lines no wider than maxWidth. */
+function wrapLines(font: PDFFont, value: string, size: number, maxWidth: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of value.split(/\s+/).filter(Boolean)) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (font.widthOfTextAtSize(candidate, size) > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** Draws wrapped text. Returns the y position below the last line drawn. */
 function wrapped(
   ctx: Ctx,
   value: string,
@@ -68,26 +85,11 @@ function wrapped(
   const size = opts.size ?? 9.5;
   const leading = opts.leading ?? size * 1.45;
   const font = opts.bold ? ctx.bold : ctx.regular;
-  let line = '';
   let cursor = y;
-
-  const flush = () => {
-    if (!line) return;
+  for (const line of wrapLines(font, value, size, maxWidth)) {
     text(ctx, line, x, cursor, opts);
     cursor -= leading;
-    line = '';
-  };
-
-  for (const word of value.split(/\s+/).filter(Boolean)) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (font.widthOfTextAtSize(candidate, size) > maxWidth && line) {
-      flush();
-      line = word;
-    } else {
-      line = candidate;
-    }
   }
-  flush();
   return cursor;
 }
 
@@ -158,22 +160,38 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   const boxTop = PAGE_H - 160;
   const boxW = 250;
   const boxX = PAGE_W - MARGIN - boxW;
-  const boxH = 104;
+  const innerW = boxW - 32;
+  const nameSize = 11;
+  const nameLeading = nameSize * 1.45;
+  const addressLeading = 11;
+
+  // Measure first so the box grows with a long name or address instead of the
+  // phone and email spilling out below it.
+  const nameLines = wrapLines(bold, clean(invoice.student_name), nameSize, innerW).length;
+  const addressLines = invoice.student_address
+    ? wrapLines(regular, clean(invoice.student_address), 8.5, innerW).length
+    : 0;
+  const contentH =
+    20 + 16 + nameLines * nameLeading - 2 + addressLines * addressLeading + 2 + (invoice.student_email ? 12 : 0);
+  const boxH = Math.max(104, contentH + 16);
   page.drawRectangle({ x: boxX, y: boxTop - boxH, width: boxW, height: boxH, color: TINT });
   page.drawRectangle({ x: boxX, y: boxTop - boxH, width: 3, height: boxH, color: AZURE });
 
   let by = boxTop - 20;
   text(ctx, 'INVOICE TO', boxX + 16, by, { size: 8, bold: true, color: AZURE });
   by -= 16;
-  by = wrapped(ctx, clean(invoice.student_name), boxX + 16, by, boxW - 32, { size: 11, bold: true }) + 2;
+  by = wrapped(ctx, clean(invoice.student_name), boxX + 16, by, innerW, { size: nameSize, bold: true }) + 2;
   if (invoice.student_address) {
-    by = wrapped(ctx, clean(invoice.student_address), boxX + 16, by, boxW - 32, { size: 8.5, color: INK_SOFT, leading: 11 });
+    by = wrapped(ctx, clean(invoice.student_address), boxX + 16, by, innerW, { size: 8.5, color: INK_SOFT, leading: addressLeading });
   }
   by -= 2;
   text(ctx, formatPhone(invoice.student_phone), boxX + 16, by, { size: 8.5 });
   if (invoice.student_email) {
     by -= 12;
-    text(ctx, clean(invoice.student_email), boxX + 16, by, { size: 8.5 });
+    // An email has no spaces to wrap at, so shrink an unusually long one to fit the box.
+    const email = clean(invoice.student_email);
+    const emailSize = Math.max(6, Math.min(8.5, (8.5 * innerW) / regular.widthOfTextAtSize(email, 8.5)));
+    text(ctx, email, boxX + 16, by, { size: emailSize });
   }
 
   /* -------------------------------------------------------------- line table */
@@ -181,7 +199,11 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
 
   const descX = MARGIN + 14;
   const amountX = PAGE_W - MARGIN - 14;
-  const rowH = 40;
+  // Leave room for the amount column so a long course name wraps instead of running under it.
+  const descW = CONTENT_W - 28 - 130;
+  const courseLines = wrapLines(bold, clean(invoice.course_name), 10.5, descW);
+  const courseLeading = 14;
+  const rowH = 40 + (courseLines.length - 1) * courseLeading;
 
   page.drawRectangle({ x: MARGIN, y: y - 24, width: CONTENT_W, height: 24, color: INDIGO });
   text(ctx, 'DESCRIPTION', descX, y - 16, { size: 8, bold: true, color: WHITE });
@@ -189,8 +211,12 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   y -= 24;
 
   page.drawRectangle({ x: MARGIN, y: y - rowH, width: CONTENT_W, height: rowH, borderColor: RULE, borderWidth: 0.75 });
-  text(ctx, clean(invoice.course_name), descX, y - 18, { size: 10.5, bold: true });
-  text(ctx, 'Course fee', descX, y - 31, { size: 8.5, color: INK_SOFT });
+  const afterCourse = wrapped(ctx, clean(invoice.course_name), descX, y - 18, descW, {
+    size: 10.5,
+    bold: true,
+    leading: courseLeading,
+  });
+  text(ctx, 'Course fee', descX, afterCourse + courseLeading - 13, { size: 8.5, color: INK_SOFT });
   text(ctx, formatAmount(invoice.amount), amountX, y - 24, { size: 11, bold: true, align: 'right' });
   y -= rowH;
 
@@ -229,7 +255,9 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   }
 
   /* ------------------------------------------------------- terms + footer */
-  const termsY = 196;
+  // Terms normally sit at a fixed height, but move down (never into the footer
+  // band) when a long address, course name and note push the content that far.
+  const termsY = Math.max(112, Math.min(196, y - 44));
   page.drawLine({
     start: { x: MARGIN, y: termsY + 26 },
     end: { x: PAGE_W - MARGIN, y: termsY + 26 },

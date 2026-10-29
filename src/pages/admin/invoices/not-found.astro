@@ -1,0 +1,22 @@
+---
+export const prerender = false;
+
+import Admin from '../../../layouts/Admin.astro';
+import { csrfToken } from '../../../lib/server/auth';
+
+const user = Astro.locals.user!;
+Astro.response.status = 404;
+---
+
+<Admin title="Invoice not found" user={user} csrf={csrfToken(Astro)} section="invoices">
+  <div class="rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-14 text-center">
+    <h1 class="text-2xl">Invoice not found</h1>
+    <p class="mt-2 text-sm text-ink-400">The link may be mistyped, or the invoice number is wrong.</p>
+    <a
+      href="/admin/invoices"
+      class="mt-5 inline-block rounded-xl bg-brand-800 px-5 py-2.5 text-sm font-semibold text-white"
+    >
+      Search all invoices
+    </a>
+  </div>
+</Admin>

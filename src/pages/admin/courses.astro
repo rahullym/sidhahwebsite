@@ -4,8 +4,8 @@ export const prerender = false;
 import Admin from '../../layouts/Admin.astro';
 import { checkCsrf, csrfToken } from '../../lib/server/auth';
 import { db } from '../../lib/server/db';
-import { listCourses } from '../../lib/server/invoices';
-import { formatRupees } from '../../lib/format';
+import { checkAmount, listCourses } from '../../lib/server/invoices';
+import { formatRupees, parseAmount, printable } from '../../lib/format';
 
 const user = Astro.locals.user!;
 let error = '';
@@ -20,11 +20,14 @@ if (Astro.request.method === 'POST') {
   } else if (action === 'add') {
     const name = String(form.get('name') ?? '').trim();
     const rawAmount = String(form.get('defaultAmount') ?? '').trim();
-    const amount = rawAmount ? Number(rawAmount) : null;
+    const amountError = rawAmount ? checkAmount(rawAmount) : null;
+    const amount = rawAmount && !amountError ? parseAmount(rawAmount) : null;
 
     if (!name) error = 'Enter a course name.';
     else if (name.length > 120) error = 'Keep the course name under 120 characters.';
-    else if (amount !== null && (!Number.isFinite(amount) || amount <= 0)) error = 'Enter a valid standard fee, or leave it blank.';
+    // The course name is printed on every invoice, so it must be in the PDF font.
+    else if (!printable(name)) error = 'The course name contains characters the invoice cannot print. Please use English letters.';
+    else if (amountError) error = `Standard fee: ${amountError} Or leave it blank.`;
     else {
       const inserted = await db`
         insert into courses (name, default_amount) values (${name}, ${amount})
@@ -36,9 +39,11 @@ if (Astro.request.method === 'POST') {
   } else if (action === 'toggle') {
     const id = Number(form.get('id'));
     // Courses are disabled, never deleted: past invoices reference them.
-    const [row] = await db<{ name: string; active: boolean }>`
-      update courses set active = not active where id = ${id} returning name, active
-    `;
+    const [row] = Number.isInteger(id) && id > 0
+      ? await db<{ name: string; active: boolean }>`
+          update courses set active = not active where id = ${id} returning name, active
+        `
+      : [];
     if (row) notice = `“${row.name}” is now ${row.active ? 'available' : 'hidden from the invoice form'}.`;
   }
 }

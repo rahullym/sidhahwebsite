@@ -4,17 +4,21 @@ export const prerender = false;
 import Admin from '../../../layouts/Admin.astro';
 import { csrfToken } from '../../../lib/server/auth';
 import { searchInvoices } from '../../../lib/server/invoices';
-import { formatDate, formatPhone, formatRupees } from '../../../lib/format';
+import { formatDate, formatPhone, formatRupees, isValidDate } from '../../../lib/format';
 
 const user = Astro.locals.user!;
 const params = Astro.url.searchParams;
 
 const q = params.get('q')?.trim() ?? '';
-const from = params.get('from') ?? '';
-const to = params.get('to') ?? '';
-const page = Number(params.get('page')) || 1;
+// A date the browser could not have produced (hand-edited URL) is dropped, not sent to the database.
+const dateParam = (name: string) => {
+  const value = params.get(name) ?? '';
+  return isValidDate(value) ? value : '';
+};
+const from = dateParam('from');
+const to = dateParam('to');
 
-const { invoices, total, pages } = await searchInvoices({ q, from, to, page });
+const { invoices, total, page, pages } = await searchInvoices({ q, from, to, page: Number(params.get('page')) || 1 });
 const filtered = Boolean(q || from || to);
 
 /** Keeps the current filters on the page links. */

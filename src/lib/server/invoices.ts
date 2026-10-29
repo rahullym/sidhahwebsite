@@ -1,6 +1,9 @@
 import { UnsafeRawSql } from '@neondatabase/serverless';
 import { db, one } from './db';
-import { normalisePhone, printable, todayInIndia } from '../format';
+import { isValidDate, normalisePhone, parseAmount, printable, todayInIndia } from '../format';
+
+/** The largest amount the form accepts — anything above is almost certainly a typo. */
+export const MAX_AMOUNT = 10_000_000;
 
 /**
  * `invoice_date` is cast to text on the way out. The driver otherwise hands back
@@ -97,17 +100,26 @@ export function validateInvoice(input: InvoiceInput, courses: Course[]): Errors 
   if (!input.courseId) errors.courseId = 'Select a course.';
   else if (!courses.some((c) => String(c.id) === input.courseId)) errors.courseId = 'That course is no longer available.';
 
-  const amount = Number(input.amount);
+  const amountError = checkAmount(input.amount);
   if (!input.amount) errors.amount = 'Amount is required.';
-  else if (!Number.isFinite(amount) || amount <= 0) errors.amount = 'Enter an amount greater than zero.';
-  else if (amount > 10_000_000) errors.amount = 'That amount looks wrong — check before saving.';
-  else if (Math.round(amount * 100) !== amount * 100) errors.amount = 'Use at most two decimal places.';
+  else if (amountError) errors.amount = amountError;
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.invoiceDate)) errors.invoiceDate = 'Enter a valid date.';
+  if (!isValidDate(input.invoiceDate)) errors.invoiceDate = 'Enter a valid date.';
   if (input.notes.length > 300) errors.notes = 'Keep the note under 300 characters.';
   else if (!printable(input.notes)) errors.notes = UNPRINTABLE;
 
   return errors;
+}
+
+/** Shared by the invoice form and the course fee field. Null means the amount is fine. */
+export function checkAmount(raw: string): string | null {
+  const amount = parseAmount(raw);
+  if (amount === null) {
+    return /\.\d{3,}/.test(raw) ? 'Use at most two decimal places.' : 'Enter an amount greater than zero.';
+  }
+  if (Number(amount) <= 0) return 'Enter an amount greater than zero.';
+  if (Number(amount) > MAX_AMOUNT) return 'That amount looks wrong — check before saving.';
+  return null;
 }
 
 /* --------------------------------------------------------------- creation */
@@ -146,7 +158,7 @@ export async function createInvoice(
   if (!course) throw new Error('Course not found');
 
   const year = Number(input.invoiceDate.slice(0, 4));
-  const amount = Number(input.amount).toFixed(2);
+  const amount = parseAmount(input.amount)!;
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -203,14 +215,16 @@ export async function searchInvoices(params: SearchParams): Promise<{
   page: number;
   pages: number;
 }> {
-  const page = Math.max(1, params.page ?? 1);
+  // Hand-edited URLs (page=2.5, from=yesterday) are ignored rather than sent to Postgres.
+  const page = Number.isInteger(params.page) ? Math.min(Math.max(1, params.page!), 100_000) : 1;
   const q = params.q?.trim() || null;
-  const like = q ? `%${q.toLowerCase()}%` : null;
+  // Escape LIKE's own wildcards so a search for "%" or "_" means the literal character.
+  const like = q ? `%${q.toLowerCase().replace(/[\\%_]/g, '\\$&')}%` : null;
   // A query of "abc" has no digits, and `%%` would match every phone number.
   const digits = q ? q.replace(/\D/g, '') : '';
   const phoneLike = digits.length >= 4 ? `%${digits}%` : null;
-  const from = params.from || null;
-  const to = params.to || null;
+  const from = params.from && isValidDate(params.from) ? params.from : null;
+  const to = params.to && isValidDate(params.to) ? params.to : null;
   const offset = (page - 1) * PAGE_SIZE;
 
   const rows = await db<Invoice & { total: string }>`

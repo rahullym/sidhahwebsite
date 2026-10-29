@@ -4,7 +4,7 @@ export const prerender = false;
 import Admin from '../../layouts/Admin.astro';
 import { checkCsrf, csrfToken, hashPassword } from '../../lib/server/auth';
 import { db } from '../../lib/server/db';
-import { formatDateTime } from '../../lib/format';
+import { formatDateTime, printable } from '../../lib/format';
 
 const user = Astro.locals.user!;
 // Creating logins is an admin-only power; staff accounts cannot escalate.
@@ -29,6 +29,10 @@ if (Astro.request.method === 'POST') {
       error = 'Username must be 3–32 characters: letters, numbers, dot, dash or underscore.';
     } else if (!fullName) {
       error = 'Enter the staff member’s full name — it is printed on every invoice they issue.';
+    } else if (fullName.length > 80) {
+      error = 'Keep the full name under 80 characters.';
+    } else if (!printable(fullName)) {
+      error = 'The name contains characters the invoice cannot print. Please use English letters.';
     } else if (password.length < 10) {
       error = 'Choose a password of at least 10 characters.';
     } else {
@@ -40,9 +44,16 @@ if (Astro.request.method === 'POST') {
       if (inserted.length === 0) error = `The username “${username}” is taken.`;
       else notice = `Created a ${role} login for ${fullName}.`;
     }
-  } else if (action === 'toggle') {
+  } else if (action === 'toggle' || action === 'unlock') {
     const id = Number(form.get('id'));
-    if (id === user.id) {
+    if (!Number.isInteger(id) || id <= 0) {
+      error = 'That staff login no longer exists.';
+    } else if (action === 'unlock') {
+      const [row] = await db<{ full_name: string }>`
+        update users set failed_attempts = 0, locked_until = null where id = ${id} returning full_name
+      `;
+      if (row) notice = `Unlocked ${row.full_name}.`;
+    } else if (id === user.id) {
       error = 'You cannot disable your own account.';
     } else {
       const [row] = await db<{ full_name: string; active: boolean }>`
@@ -51,12 +62,6 @@ if (Astro.request.method === 'POST') {
       `;
       if (row) notice = `${row.full_name} can ${row.active ? 'now' : 'no longer'} log in.`;
     }
-  } else if (action === 'unlock') {
-    const id = Number(form.get('id'));
-    const [row] = await db<{ full_name: string }>`
-      update users set failed_attempts = 0, locked_until = null where id = ${id} returning full_name
-    `;
-    if (row) notice = `Unlocked ${row.full_name}.`;
   }
 }
 

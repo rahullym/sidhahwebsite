@@ -57,6 +57,28 @@ export function formatDateTime(value: string | Date): string {
   });
 }
 
+/**
+ * Reads a rupee amount the way staff type it — "25000", "25,000", "₹ 19,999.99" —
+ * and returns it as a plain "19999.99" string, or null if it is not a valid
+ * amount with at most two decimal places. Checked as text, not as a float:
+ * 19999.99 * 100 is 1999998.9999999998 in floating point.
+ */
+export function parseAmount(input: string): string | null {
+  const cleaned = input.replace(/[₹,\s]/g, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+  return Number(cleaned).toFixed(2);
+}
+
+/** True only for a real calendar date in yyyy-mm-dd form (rejects 2026-02-30). */
+export function isValidDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [year, month, day] = match.slice(1).map(Number);
+  if (year < 2000 || year > 2100) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
 /** Today in IST, as yyyy-mm-dd. The server runs in UTC; the institute does not. */
 export function todayInIndia(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());

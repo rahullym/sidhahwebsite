@@ -9,9 +9,11 @@ import { site } from '../../../data/site';
 
 const user = Astro.locals.user!;
 const id = Number(Astro.params.id);
-const invoice = Number.isInteger(id) && id > 0 ? await getInvoice(id) : null;
+const invoice = /^\d{1,9}$/.test(Astro.params.id ?? '') && id > 0 ? await getInvoice(id) : null;
 
-if (!invoice) return Astro.rewrite('/404');
+// The public 404 page is prerendered, and a server route cannot rewrite to a
+// prerendered one (Astro throws), so missing invoices get the dashboard's own 404.
+if (!invoice) return Astro.rewrite('/admin/invoices/not-found');
 
 const justCreated = Astro.url.searchParams.has('created');
 const pdfUrl = `/admin/invoices/${invoice.id}.pdf`;
