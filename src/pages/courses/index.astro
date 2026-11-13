@@ -3,10 +3,15 @@ import Base from '../../layouts/Base.astro';
 import SectionHeading from '../../components/SectionHeading.astro';
 import CourseCard from '../../components/CourseCard.astro';
 import EnquiryCTA from '../../components/EnquiryCTA.astro';
-import { courses, addOns, addOnNote } from '../../data/courses';
+import { addOns, addOnNote } from '../../data/courses';
+import { getCourses } from '../../lib/server/content';
 import { href } from '../../lib/url';
 
-const [pg, diploma] = courses;
+const courses = await getCourses();
+// shortcut: the comparison rows below are written for the PG Diploma vs Diploma pair and are not
+// editable; the table hides itself unless both course pages are published. Make it data-driven if courses change shape.
+const pg = courses.find((c) => c.slug === 'pg-diploma-hospital-administration');
+const diploma = courses.find((c) => c.slug === 'diploma-hospital-administration');
 
 const comparison = [
   { label: 'Duration', pg: '1 Year', diploma: '6 Months' },
@@ -49,6 +54,7 @@ const comparison = [
   </section>
 
   <!-- Comparison -->
+  {pg && diploma && (
   <section class="bg-ink-50/60 py-20 sm:py-24">
     <div class="container-page">
       <SectionHeading
@@ -127,7 +133,7 @@ const comparison = [
               <td class="p-5"></td>
               <td class="p-5">
                 <a
-                  href={href(`/courses/${pg!.slug}/`)}
+                  href={href(`/courses/${pg.slug}/`)}
                   class="inline-flex rounded-xl bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
                 >
                   View syllabus
@@ -135,7 +141,7 @@ const comparison = [
               </td>
               <td class="p-5">
                 <a
-                  href={href(`/courses/${diploma!.slug}/`)}
+                  href={href(`/courses/${diploma.slug}/`)}
                   class="inline-flex rounded-xl border border-ink-200 px-5 py-3 text-sm font-bold text-ink-900 transition-colors hover:border-brand-300 hover:text-brand-700"
                 >
                   View syllabus
@@ -147,6 +153,7 @@ const comparison = [
       </div>
     </div>
   </section>
+  )}
 
   <!-- Add-ons -->
   <section class="container-page py-20 sm:py-24">

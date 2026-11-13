@@ -1,4 +1,7 @@
 /**
+ * Starting content only: `npm run db:seed-content` copies `placements` into the database, and the
+ * live site reads from there (edited in /admin/placements).
+ *
  * Real placement records taken from Sidhah's own published placement creatives.
  * `kind` matters: some of these are confirmed hospital positions, others are
  * training placements. Do not flatten the two — the distinction is the
@@ -77,9 +80,6 @@ export const placements: Placement[] = [
     program: 'Hospital Administration',
   },
 ];
-
-/** Hospitals that have taken Sidhah students, derived so it can never drift. */
-export const hiringHospitals = [...new Set(placements.map((p) => p.hospital))];
 
 export interface VideoTestimonial {
   /** YouTube video ID — the part after `v=`, e.g. dQw4w9WgXcQ */

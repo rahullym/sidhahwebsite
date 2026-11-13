@@ -1,0 +1,142 @@
+---
+export const prerender = false;
+
+import Admin from '../../../layouts/Admin.astro';
+import { checkCsrf, csrfToken } from '../../../lib/server/auth';
+import { db, one } from '../../../lib/server/db';
+import { deleteMedia, mediaUrl, PhotoError, saveUpload } from '../../../lib/server/content';
+
+const user = Astro.locals.user!;
+const csrf = csrfToken(Astro);
+const isNew = Astro.params.id === 'new';
+const id = Number(Astro.params.id);
+
+type Row = {
+  name: string; from_field: string | null; position: string; hospital: string; location: string;
+  kind: string; program: string; photo_id: number | null; sort_order: number;
+};
+const existing = isNew ? null : Number.isInteger(id) && id > 0 ? await one<Row>(db`select * from placements where id = ${id}`) : null;
+if (!isNew && !existing) return Astro.redirect('/admin/placements');
+
+let p: Row = existing ?? {
+  name: '', from_field: null, position: '', hospital: '', location: 'Kochi, Kerala',
+  kind: 'placed', program: 'Hospital Administration', photo_id: null, sort_order: 0,
+};
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const get = (k: string) => String(form.get(k) ?? '').trim().slice(0, 200);
+  p = {
+    ...p, name: get('name'), from_field: get('from') || null, position: get('position'), hospital: get('hospital'),
+    location: get('location'), kind: get('kind') === 'training' ? 'training' : 'placed', program: get('program'),
+    sort_order: Number(get('sortOrder')) || 0,
+  };
+
+  if (!checkCsrf(Astro, form.get('csrf'))) error = 'Your session expired. Please try again.';
+  else if (!p.name || !p.position || !p.hospital) error = 'Name, position and hospital are required.';
+  else {
+    let photoId: number | null = null;
+    try {
+      photoId = await saveUpload(form.get('photo'));
+      const finalPhoto = photoId ?? (form.get('removePhoto') === 'on' ? null : p.photo_id);
+      if (isNew) {
+        await db`
+          insert into placements (name, from_field, position, hospital, location, kind, program, photo_id, sort_order)
+          values (${p.name}, ${p.from_field}, ${p.position}, ${p.hospital}, ${p.location || 'Kochi, Kerala'},
+            ${p.kind}, ${p.program || 'Hospital Administration'}, ${finalPhoto}, ${p.sort_order})
+        `;
+      } else {
+        await db`
+          update placements set name = ${p.name}, from_field = ${p.from_field}, position = ${p.position},
+            hospital = ${p.hospital}, location = ${p.location}, kind = ${p.kind}, program = ${p.program},
+            photo_id = ${finalPhoto}, sort_order = ${p.sort_order}
+          where id = ${id}
+        `;
+        if (finalPhoto !== p.photo_id) await deleteMedia(p.photo_id);
+      }
+      return Astro.redirect('/admin/placements?saved=1', 303);
+    } catch (e) {
+      await deleteMedia(photoId);
+      if (e instanceof PhotoError) error = e.message;
+      else {
+        console.error('Placement save failed', e);
+        error = 'Could not save. Please try again.';
+      }
+    }
+  }
+}
+
+const photo = mediaUrl(p.photo_id);
+const field =
+  'w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100';
+const label = 'mb-1.5 block text-sm font-semibold text-ink-800';
+---
+
+<Admin title={isNew ? 'Add student' : `Edit ${p.name}`} user={user} csrf={csrf} section="placements">
+  <a href="/admin/placements" class="text-sm font-semibold text-ink-400 hover:text-ink-900">← All placements</a>
+  <h1 class="mt-3 text-3xl">{isNew ? 'Add placed student' : p.name}</h1>
+
+  {error && <p role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
+
+  <form method="post" enctype="multipart/form-data" class="mt-8 space-y-6">
+    <input type="hidden" name="csrf" value={csrf} />
+    <section class="grid gap-5 rounded-2xl border border-ink-100 bg-white p-6 shadow-card sm:grid-cols-2">
+      <div>
+        <label for="name" class={label}>Student name *</label>
+        <input id="name" name="name" required value={p.name} class={field} />
+      </div>
+      <div>
+        <label for="from" class={label}>Studied before</label>
+        <input id="from" name="from" value={p.from_field ?? ''} placeholder="e.g. Chemistry (optional)" class={field} />
+        <p class="mt-1.5 text-xs text-ink-400">Shown as a “Chemistry → Hospital” badge.</p>
+      </div>
+      <div>
+        <label for="position" class={label}>Position *</label>
+        <input id="position" name="position" required value={p.position} placeholder="Front Office Administrator" class={field} />
+      </div>
+      <div>
+        <label for="hospital" class={label}>Hospital *</label>
+        <input id="hospital" name="hospital" required value={p.hospital} placeholder="Lakeshore Hospital" class={field} />
+      </div>
+      <div>
+        <label for="location" class={label}>Location</label>
+        <input id="location" name="location" value={p.location} class={field} />
+      </div>
+      <div>
+        <label for="kind" class={label}>Type</label>
+        <select id="kind" name="kind" class:list={[field, 'bg-white']}>
+          <option value="placed" selected={p.kind === 'placed'}>Placed (job)</option>
+          <option value="training" selected={p.kind === 'training'}>Training placement</option>
+        </select>
+      </div>
+      <div>
+        <label for="program" class={label}>Program</label>
+        <input id="program" name="program" value={p.program} class={field} />
+      </div>
+      <div>
+        <label for="sortOrder" class={label}>Position in list</label>
+        <input id="sortOrder" name="sortOrder" type="number" value={String(p.sort_order)} class={field} />
+        <p class="mt-1.5 text-xs text-ink-400">Lower numbers come first.</p>
+      </div>
+      <div class="flex flex-wrap items-start gap-5 sm:col-span-2">
+        {photo
+          ? <img src={photo} alt="" class="h-36 w-28 rounded-xl border border-ink-100 object-cover object-top" />
+          : <div class="grid h-36 w-28 place-items-center rounded-xl border border-dashed border-ink-200 text-sm text-ink-400">No photo</div>}
+        <div class="space-y-3">
+          <label for="photo" class={label}>{photo ? 'Replace photo' : 'Upload photo'}</label>
+          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" data-photo class="text-sm" />
+          <p class="text-xs text-ink-400">Portrait photos work best.</p>
+          {photo && (
+            <label class="flex items-center gap-2 text-sm text-ink-600">
+              <input type="checkbox" name="removePhoto" class="accent-brand-700" /> Remove photo
+            </label>
+          )}
+        </div>
+      </div>
+    </section>
+    <button type="submit" class="rounded-xl bg-brand-800 px-6 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900 disabled:opacity-50">
+      Save
+    </button>
+  </form>
+</Admin>

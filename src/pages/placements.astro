@@ -6,13 +6,16 @@ import VideoTestimonial from '../components/VideoTestimonial.astro';
 import Accreditations from '../components/Accreditations.astro';
 import Gallery from '../components/Gallery.astro';
 import EnquiryCTA from '../components/EnquiryCTA.astro';
-import { placements, videoTestimonials, hiringHospitals, graduation } from '../data/placements';
-import { galleryImages } from '../lib/images';
+import { videoTestimonials, graduation } from '../data/placements';
+import { getGallery, getPlacements } from '../lib/server/content';
+
+const [placements, gallery] = await Promise.all([getPlacements(), getGallery()]);
+const hiringHospitals = [...new Set(placements.map((p) => p.hospital))];
 
 const placed = placements.filter((p) => p.kind === 'placed');
 const training = placements.filter((p) => p.kind === 'training');
 const pivots = placements.filter((p) => p.from);
-const hasGallery = galleryImages().length > 0;
+const hasGallery = gallery.length > 0;
 ---
 
 <Base
@@ -126,7 +129,7 @@ const hasGallery = galleryImages().length > 0;
           description={graduation.caption}
         />
         <div class="mt-14">
-          <Gallery alt={`Sidhah ${graduation.title} graduation ceremony, batch ${graduation.batch}`} />
+          <Gallery images={gallery} alt={`Sidhah ${graduation.title} graduation ceremony, batch ${graduation.batch}`} />
         </div>
       </section>
     )

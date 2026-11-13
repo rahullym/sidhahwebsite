@@ -1,0 +1,243 @@
+---
+export const prerender = false;
+
+import Admin from '../../../layouts/Admin.astro';
+import { checkCsrf, csrfToken } from '../../../lib/server/auth';
+import { db, one } from '../../../lib/server/db';
+import { checkAmount } from '../../../lib/server/invoices';
+import {
+  deleteMedia, PhotoError, formatHighlights, formatModules, lines, mediaUrl, parseHighlights, parseModules, saveUpload, slugify,
+} from '../../../lib/server/content';
+import { parseAmount, printable } from '../../../lib/format';
+
+const user = Astro.locals.user!;
+const id = Number(Astro.params.id);
+const load = () =>
+  Number.isInteger(id) && id > 0 ? one<Record<string, any>>(db`select * from courses where id = ${id}`) : null;
+let course = await load();
+if (!course) return Astro.redirect('/admin/courses');
+
+let error = '';
+let notice = '';
+const csrf = csrfToken(Astro);
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const get = (k: string) => String(form.get(k) ?? '').trim();
+
+  if (!checkCsrf(Astro, form.get('csrf'))) {
+    error = 'Your session expired. Please try again.';
+  } else {
+    const name = get('name');
+    const slug = slugify(get('slug') || name);
+    const rawFee = get('fee');
+    const feeError = rawFee ? checkAmount(rawFee) : null;
+    const published = form.get('published') === 'on';
+    let modules = null;
+    try {
+      modules = parseModules(get('modules'));
+    } catch (e) {
+      error = (e as Error).message;
+    }
+
+    if (!modules) {
+      // error already set by the syllabus parser
+    } else if (!name) error = 'Enter the course name.';
+    else if (name.length > 120) error = 'Keep the course name under 120 characters.';
+    // The name is printed on invoices, so it must be in the PDF font.
+    else if (!printable(name)) error = 'The course name contains characters the invoice cannot print. Please use English letters.';
+    else if (feeError) error = `Fee: ${feeError} Or leave it blank.`;
+    else if (published && (!slug || !get('summary') || !get('duration'))) {
+      error = 'To show this course on the website, fill in at least the duration and the summary.';
+    } else {
+      let photoId: number | null = null;
+      try {
+        photoId = await saveUpload(form.get('photo'));
+        const removePhoto = form.get('removePhoto') === 'on';
+        const imageId = photoId ?? (removePhoto ? null : course.image_id);
+        await db`
+          update courses set
+            name = ${name}, slug = ${slug || null}, default_amount = ${rawFee ? parseAmount(rawFee) : null},
+            published = ${published}, featured = ${form.get('featured') === 'on'},
+            sort_order = ${Number(get('sortOrder')) || 0},
+            short_title = ${get('shortTitle') || null}, duration = ${get('duration') || null},
+            level = ${get('level') || null}, summary = ${get('summary') || null}, intro = ${get('intro') || null},
+            eligibility = ${JSON.stringify(lines(get('eligibility')))},
+            outcomes = ${JSON.stringify(lines(get('outcomes')))},
+            careers = ${JSON.stringify(lines(get('careers')))},
+            highlights = ${JSON.stringify(parseHighlights(get('highlights')))},
+            modules = ${JSON.stringify(modules)},
+            image_id = ${imageId}
+          where id = ${id}
+        `;
+        if (imageId !== course.image_id) await deleteMedia(course.image_id);
+        notice = published
+          ? 'Saved. The website shows the change within a minute.'
+          : 'Saved. This course is not shown on the website until “Show on website” is ticked.';
+        course = await load();
+      } catch (e) {
+        await deleteMedia(photoId); // the save failed, so the new photo is unused
+        const message = (e as Error).message;
+        if (e instanceof PhotoError) error = message;
+        else if (message.includes('courses_slug_key')) error = 'Another course already uses that web address. Change it.';
+        else if (message.includes('courses_name_key')) error = 'Another course already has that name.';
+        else {
+          console.error('Course save failed', e);
+          error = 'Could not save. Please try again.';
+        }
+      }
+    }
+  }
+}
+
+const c = course!;
+const photo = mediaUrl(c.image_id);
+const field =
+  'w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100';
+const label = 'mb-1.5 block text-sm font-semibold text-ink-800';
+const help = 'mt-1.5 text-xs text-ink-400';
+const card = 'rounded-2xl border border-ink-100 bg-white p-6 shadow-card';
+---
+
+<Admin title={`Edit ${c.name}`} user={user} csrf={csrf} section="courses">
+  <a href="/admin/courses" class="text-sm font-semibold text-ink-400 hover:text-ink-900">← All courses</a>
+  <div class="mt-3 flex flex-wrap items-end justify-between gap-3">
+    <h1 class="text-3xl">{c.name}</h1>
+    {c.published && c.slug && (
+      <a href={`/courses/${c.slug}/`} target="_blank" rel="noopener" class="text-sm font-semibold text-brand-600 hover:text-brand-800">
+        View on website ↗
+      </a>
+    )}
+  </div>
+
+  {error && <p role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
+  {notice && <p class="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">{notice}</p>}
+
+  <form method="post" enctype="multipart/form-data" class="mt-8 space-y-6">
+    <input type="hidden" name="csrf" value={csrf} />
+
+    <section class={card}>
+      <h2 class="text-lg">Basics</h2>
+      <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label for="name" class={label}>Course name *</label>
+          <input id="name" name="name" required value={c.name} class={field} />
+          <p class={help}>Printed on invoices and used as the page title.</p>
+        </div>
+        <div>
+          <label for="fee" class={label}>Course fee (₹)</label>
+          <input id="fee" name="fee" inputmode="decimal" value={c.default_amount ? Number(c.default_amount).toFixed(2) : ''} placeholder="125000" class={field} />
+          <p class={help}>Fills in the course fee on new invoices. Old invoices keep the fee they were issued with.</p>
+        </div>
+        <div>
+          <label for="duration" class={label}>Duration</label>
+          <input id="duration" name="duration" value={c.duration ?? ''} placeholder="1 Year" class={field} />
+        </div>
+        <div>
+          <label for="level" class={label}>Level</label>
+          <input id="level" name="level" value={c.level ?? ''} placeholder="Post Graduate Diploma" class={field} />
+        </div>
+        <div>
+          <label for="shortTitle" class={label}>Short name</label>
+          <input id="shortTitle" name="shortTitle" value={c.short_title ?? ''} placeholder="Same as the course name" class={field} />
+        </div>
+        <div>
+          <label for="slug" class={label}>Web address</label>
+          <div class="flex items-center gap-1 text-sm text-ink-400">
+            <span class="shrink-0">/courses/</span>
+            <input id="slug" name="slug" value={c.slug ?? ''} placeholder="made from the name" class={field} />
+          </div>
+          <p class={help}>Changing this breaks links people have already shared.</p>
+        </div>
+        <div>
+          <label for="sortOrder" class={label}>Position in lists</label>
+          <input id="sortOrder" name="sortOrder" type="number" value={String(c.sort_order)} class={field} />
+          <p class={help}>Lower numbers come first.</p>
+        </div>
+        <div class="flex flex-col gap-3 sm:col-span-2">
+          <label class="flex items-center gap-2.5 font-semibold text-ink-800">
+            <input type="checkbox" name="published" checked={c.published} class="size-4 accent-brand-700" />
+            Show on website
+          </label>
+          <label class="flex items-center gap-2.5 font-semibold text-ink-800">
+            <input type="checkbox" name="featured" checked={c.featured} class="size-4 accent-brand-700" />
+            Featured course
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class={card}>
+      <h2 class="text-lg">Photo</h2>
+      <div class="mt-5 flex flex-wrap items-start gap-5">
+        {photo
+          ? <img src={photo} alt="" class="h-28 w-48 rounded-xl border border-ink-100 object-cover" />
+          : <div class="grid h-28 w-48 place-items-center rounded-xl border border-dashed border-ink-200 text-sm text-ink-400">No photo</div>}
+        <div class="space-y-3">
+          <label for="photo" class={label}>{photo ? 'Replace photo' : 'Upload photo'}</label>
+          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" data-photo class="text-sm" />
+          <p class={help}>Wide photos look best. Shown at the top of the course card.</p>
+          {photo && (
+            <label class="flex items-center gap-2 text-sm text-ink-600">
+              <input type="checkbox" name="removePhoto" class="accent-brand-700" /> Remove photo
+            </label>
+          )}
+        </div>
+      </div>
+    </section>
+
+    <section class={card}>
+      <h2 class="text-lg">Description</h2>
+      <div class="mt-5 space-y-5">
+        <div>
+          <label for="summary" class={label}>Summary</label>
+          <textarea id="summary" name="summary" rows="2" class={field}>{c.summary ?? ''}</textarea>
+          <p class={help}>One or two sentences, shown on the course card and in Google results.</p>
+        </div>
+        <div>
+          <label for="intro" class={label}>Introduction</label>
+          <textarea id="intro" name="intro" rows="5" class={field}>{c.intro ?? ''}</textarea>
+        </div>
+        <div>
+          <label for="highlights" class={label}>Highlights</label>
+          <textarea id="highlights" name="highlights" rows="4" class={field}>{formatHighlights(c.highlights)}</textarea>
+          <p class={help}>One per line, as <b>Label: Value</b> — e.g. <code>Duration: 1 Year</code> or <code>Fee: ₹1,25,000</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class={card}>
+      <h2 class="text-lg">Lists</h2>
+      <p class="mt-1 text-sm text-ink-400">One item per line.</p>
+      <div class="mt-5 grid gap-5 lg:grid-cols-3">
+        <div>
+          <label for="eligibility" class={label}>Who can join</label>
+          <textarea id="eligibility" name="eligibility" rows="7" class={field}>{c.eligibility.join('\n')}</textarea>
+        </div>
+        <div>
+          <label for="outcomes" class={label}>What you will learn to do</label>
+          <textarea id="outcomes" name="outcomes" rows="7" class={field}>{c.outcomes.join('\n')}</textarea>
+        </div>
+        <div>
+          <label for="careers" class={label}>Career roles</label>
+          <textarea id="careers" name="careers" rows="7" class={field}>{c.careers.join('\n')}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class={card}>
+      <h2 class="text-lg">Syllabus</h2>
+      <p class="mt-1 text-sm text-ink-400">
+        Start each module with a line beginning with <code>#</code>, then one chapter per line underneath.
+      </p>
+      <textarea id="modules" name="modules" rows="18" aria-label="Syllabus" class:list={[field, 'mt-4 font-mono text-sm']}>{formatModules(c.modules)}</textarea>
+    </section>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="rounded-xl bg-brand-800 px-6 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900 disabled:opacity-50">
+        Save course
+      </button>
+      <a href="/admin/courses" class="rounded-xl px-4 py-3 font-semibold text-ink-400 hover:text-ink-900">Back</a>
+    </div>
+  </form>
+</Admin>

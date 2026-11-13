@@ -29,6 +29,8 @@ interface Props {
   tint?: number;
   /** Skips lazy-loading — use for the one image above the fold. */
   priority?: boolean;
+  /** A photo uploaded in the dashboard; wins over the file in src/assets/photos. */
+  src?: string | null;
 }
 
 const {
@@ -43,6 +45,7 @@ const {
   tone = 'light',
   tint,
   priority = false,
+  src,
 } = Astro.props;
 
 const source = photo(name);
@@ -80,7 +83,14 @@ const icons: Record<Icon, string> = {
 
 <div class={`relative overflow-hidden ${ratio} ${className}`}>
   {
-    source ? (
+    src ? (
+      <img
+        src={src}
+        alt={alt}
+        class="h-full w-full object-cover"
+        loading={priority ? 'eager' : 'lazy'}
+      />
+    ) : source ? (
       <Image
         src={source}
         alt={alt}

@@ -4,7 +4,8 @@ export const prerender = false;
 import Admin from '../../layouts/Admin.astro';
 import { checkCsrf, csrfToken } from '../../lib/server/auth';
 import { db } from '../../lib/server/db';
-import { checkAmount, listCourses } from '../../lib/server/invoices';
+import { checkAmount } from '../../lib/server/invoices';
+import { deleteMedia } from '../../lib/server/content';
 import { formatRupees, parseAmount, printable } from '../../lib/format';
 
 const user = Astro.locals.user!;
@@ -44,11 +45,31 @@ if (Astro.request.method === 'POST') {
           update courses set active = not active where id = ${id} returning name, active
         `
       : [];
-    if (row) notice = `“${row.name}” is now ${row.active ? 'available' : 'hidden from the invoice form'}.`;
+    if (row) notice = `“${row.name}” is now ${row.active ? 'available' : 'hidden from the invoice form and the website'}.`;
+  } else if (action === 'delete') {
+    const id = Number(form.get('id'));
+    // Invoices keep a reference to their course, so only unused courses can go.
+    const [row] = Number.isInteger(id) && id > 0
+      ? await db<{ name: string; image_id: number | null }>`
+          delete from courses where id = ${id} and not exists (select 1 from invoices where course_id = ${id})
+          returning name, image_id
+        `
+      : [];
+    if (row) {
+      await deleteMedia(row.image_id);
+      notice = `Deleted “${row.name}”.`;
+    } else error = 'That course has invoices, so it can only be hidden, not deleted.';
   }
 }
 
-const courses = await listCourses(true);
+const courses = await db<{
+  id: number; name: string; default_amount: string | null; active: boolean; published: boolean; slug: string | null;
+  invoices: number;
+}>`
+  select c.id, c.name, c.default_amount, c.active, c.published, c.slug,
+    (select count(*)::int from invoices i where i.course_id = c.id) as invoices
+  from courses c order by c.active desc, c.sort_order, c.name
+`;
 const field =
   'w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100';
 const csrf = csrfToken(Astro);
@@ -57,7 +78,7 @@ const csrf = csrfToken(Astro);
 <Admin title="Courses" user={user} csrf={csrf} section="courses">
   <h1 class="text-3xl">Courses</h1>
   <p class="mt-1.5 text-ink-400">
-    These fill the course dropdown on the invoice form. Set a standard fee to prefill the amount.
+    Each course appears in the invoice form. Open a course to edit its fee, its page on the website and its photo.
   </p>
 
   {error && <p role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
@@ -98,6 +119,15 @@ const csrf = csrfToken(Astro);
           {!course.active && (
             <span class="rounded-full bg-ink-100 px-2.5 py-1 text-xs font-semibold text-ink-400">Hidden</span>
           )}
+          {course.active && course.published && (
+            <span class="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">On website</span>
+          )}
+          <a
+            href={`/admin/courses/${course.id}`}
+            class="rounded-lg bg-brand-800 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-900"
+          >
+            Edit
+          </a>
           <form method="post">
             <input type="hidden" name="csrf" value={csrf} />
             <input type="hidden" name="action" value="toggle" />
@@ -109,6 +139,16 @@ const csrf = csrfToken(Astro);
               {course.active ? 'Hide' : 'Restore'}
             </button>
           </form>
+          {course.invoices === 0 && (
+            <form method="post" onsubmit={`return confirm(${JSON.stringify(`Delete “${course.name}”? This cannot be undone.`)})`}>
+              <input type="hidden" name="csrf" value={csrf} />
+              <input type="hidden" name="action" value="delete" />
+              <input type="hidden" name="id" value={String(course.id)} />
+              <button type="submit" class="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-50">
+                Delete
+              </button>
+            </form>
+          )}
         </li>
       ))
     }

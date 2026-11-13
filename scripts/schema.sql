@@ -77,3 +77,69 @@ alter table invoices add column if not exists course_fee numeric(12, 2);
 alter table invoices add column if not exists discount numeric(12, 2);
 -- Sum of earlier invoices for the same student and course, frozen at issue time.
 alter table invoices add column if not exists previous_paid numeric(12, 2);
+
+-- Website content managed from the dashboard ------------------------------
+
+-- Uploaded photos. Rows are never edited: replacing a photo inserts a new row,
+-- so /media/<id> can be cached forever.
+create table if not exists media (
+  id           serial primary key,
+  content_type text        not null,
+  data         bytea       not null,
+  created_at   timestamptz not null default now()
+);
+
+-- A course row is both the invoice dropdown entry and, once published, a page
+-- on the website. The list fields are JSON arrays edited one item per line.
+alter table courses add column if not exists slug text;
+create unique index if not exists courses_slug_key on courses (slug);
+alter table courses add column if not exists published boolean not null default false;
+alter table courses add column if not exists sort_order integer not null default 0;
+alter table courses add column if not exists short_title text;
+alter table courses add column if not exists duration text;
+alter table courses add column if not exists level text;
+alter table courses add column if not exists summary text;
+alter table courses add column if not exists intro text;
+alter table courses add column if not exists featured boolean not null default false;
+alter table courses add column if not exists eligibility jsonb not null default '[]';
+alter table courses add column if not exists outcomes jsonb not null default '[]';
+alter table courses add column if not exists careers jsonb not null default '[]';
+alter table courses add column if not exists highlights jsonb not null default '[]';
+alter table courses add column if not exists modules jsonb not null default '[]';
+alter table courses add column if not exists image_id integer references media (id) on delete set null;
+
+create table if not exists placements (
+  id         serial primary key,
+  name       text        not null,
+  from_field text,
+  position   text        not null,
+  hospital   text        not null,
+  location   text        not null default 'Kochi, Kerala',
+  kind       text        not null default 'placed' check (kind in ('placed', 'training')),
+  program    text        not null default 'Hospital Administration',
+  photo_id   integer references media (id) on delete set null,
+  sort_order integer     not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists gallery (
+  id         serial primary key,
+  photo_id   integer     not null references media (id) on delete cascade,
+  caption    text,
+  sort_order integer     not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists posts (
+  id           serial primary key,
+  slug         text        not null,
+  title        text        not null,
+  excerpt      text,
+  body         text        not null default '',
+  cover_id     integer references media (id) on delete set null,
+  published    boolean     not null default false,
+  published_at timestamptz,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create unique index if not exists posts_slug_key on posts (slug);

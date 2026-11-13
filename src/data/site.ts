@@ -50,6 +50,7 @@ export const nav = [
   { label: 'Programs', href: '/courses/' },
   { label: 'Placements', href: '/placements/' },
   { label: 'Campus', href: '/campus/' },
+  { label: 'Blog', href: '/blog/' },
   { label: 'About', href: '/about/' },
   { label: 'Contact', href: '/contact/' },
 ] as const;

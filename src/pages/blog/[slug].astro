@@ -1,0 +1,53 @@
+---
+import Base from '../../layouts/Base.astro';
+import EnquiryCTA from '../../components/EnquiryCTA.astro';
+import { getPost } from '../../lib/server/content';
+import { renderBody } from '../../lib/markup';
+import { formatDate } from '../../lib/format';
+import { href } from '../../lib/url';
+
+const post = await getPost(Astro.params.slug ?? '');
+if (!post) return Astro.rewrite('/404');
+---
+
+<Base title={post.title} description={post.excerpt || post.title}>
+  <article class="container-page max-w-3xl py-14 sm:py-20">
+    <a href={href('/blog/')} class="text-sm font-semibold text-brand-700 hover:text-brand-900">← All posts</a>
+    <h1 class="mt-4 text-4xl leading-tight sm:text-5xl">{post.title}</h1>
+    {post.published_at && <p class="mt-4 text-sm font-medium text-ink-400">{formatDate(post.published_at)}</p>}
+    {post.cover && <img src={post.cover} alt="" class="mt-8 w-full rounded-3xl border border-ink-100 object-cover shadow-card" />}
+    <div class="post-body mt-10" set:html={renderBody(post.body)} />
+  </article>
+  <EnquiryCTA />
+</Base>
+
+<style>
+  .post-body {
+    color: var(--color-ink-700, #2b3060);
+    font-size: 1.075rem;
+    line-height: 1.8;
+  }
+  .post-body :global(p),
+  .post-body :global(ul) {
+    margin-top: 1.25rem;
+  }
+  .post-body :global(h2) {
+    margin-top: 2.5rem;
+    font-size: 1.6rem;
+  }
+  .post-body :global(h3) {
+    margin-top: 2rem;
+    font-size: 1.25rem;
+  }
+  .post-body :global(ul) {
+    list-style: disc;
+    padding-left: 1.4rem;
+  }
+  .post-body :global(li) {
+    margin-top: 0.4rem;
+  }
+  .post-body :global(a) {
+    color: var(--color-brand-700, #1a2fc4);
+    text-decoration: underline;
+  }
+</style>

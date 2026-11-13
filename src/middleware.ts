@@ -13,7 +13,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const path = context.url.pathname;
   context.locals.user = null;
 
-  if (!path.startsWith('/admin')) return next();
+  if (!path.startsWith('/admin')) {
+    const response = await next();
+    // Public pages: the CDN serves a copy up to a minute old while refreshing it
+    // in the background. Routes that set their own policy (photos) keep theirs.
+    if (!response.headers.has('Cache-Control')) {
+      response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=86400');
+    }
+    return response;
+  }
 
   const user = await getSessionUser(context);
   context.locals.user = user;

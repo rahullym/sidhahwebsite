@@ -1,0 +1,143 @@
+---
+export const prerender = false;
+
+import Admin from '../../../layouts/Admin.astro';
+import { checkCsrf, csrfToken } from '../../../lib/server/auth';
+import { db, one } from '../../../lib/server/db';
+import { deleteMedia, mediaUrl, PhotoError, saveUpload, slugify } from '../../../lib/server/content';
+
+const user = Astro.locals.user!;
+const csrf = csrfToken(Astro);
+const isNew = Astro.params.id === 'new';
+const id = Number(Astro.params.id);
+
+type Row = { title: string; slug: string; excerpt: string | null; body: string; cover_id: number | null; published: boolean };
+const existing = isNew ? null : Number.isInteger(id) && id > 0 ? await one<Row>(db`select * from posts where id = ${id}`) : null;
+if (!isNew && !existing) return Astro.redirect('/admin/blog');
+
+let post: Row = existing ?? { title: '', slug: '', excerpt: null, body: '', cover_id: null, published: false };
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const get = (k: string) => String(form.get(k) ?? '').trim();
+  post = {
+    ...post,
+    title: get('title').slice(0, 200),
+    slug: slugify(get('slug') || get('title')),
+    excerpt: get('excerpt').slice(0, 400) || null,
+    body: get('body').slice(0, 100_000),
+    published: form.get('published') === 'on',
+  };
+
+  if (!checkCsrf(Astro, form.get('csrf'))) error = 'Your session expired. Please try again.';
+  else if (!post.title) error = 'Enter a title.';
+  else if (!post.slug) error = 'The title needs at least one English letter or number for the web address.';
+  else if (post.published && !post.body) error = 'Write the post before publishing it.';
+  else {
+    let coverId: number | null = null;
+    try {
+      coverId = await saveUpload(form.get('cover'));
+      const finalCover = coverId ?? (form.get('removeCover') === 'on' ? null : post.cover_id);
+      if (isNew) {
+        await db`
+          insert into posts (title, slug, excerpt, body, cover_id, published, published_at)
+          values (${post.title}, ${post.slug}, ${post.excerpt}, ${post.body}, ${finalCover}, ${post.published},
+            ${post.published ? new Date().toISOString() : null})
+        `;
+      } else {
+        // The publish date is set the first time a post goes live and kept after that.
+        await db`
+          update posts set title = ${post.title}, slug = ${post.slug}, excerpt = ${post.excerpt}, body = ${post.body},
+            cover_id = ${finalCover}, published = ${post.published},
+            published_at = case when ${post.published} then coalesce(published_at, now()) else published_at end,
+            updated_at = now()
+          where id = ${id}
+        `;
+        if (finalCover !== post.cover_id) await deleteMedia(post.cover_id);
+      }
+      return Astro.redirect('/admin/blog?saved=1', 303);
+    } catch (e) {
+      await deleteMedia(coverId);
+      const message = (e as Error).message;
+      if (e instanceof PhotoError) error = message;
+      else if (message.includes('posts_slug_key')) error = 'Another post already uses that web address. Change the title or the web address.';
+      else {
+        console.error('Post save failed', e);
+        error = 'Could not save. Please try again.';
+      }
+    }
+  }
+}
+
+const cover = mediaUrl(post.cover_id);
+const field =
+  'w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-ink-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100';
+const label = 'mb-1.5 block text-sm font-semibold text-ink-800';
+---
+
+<Admin title={isNew ? 'New post' : `Edit ${post.title}`} user={user} csrf={csrf} section="blog">
+  <a href="/admin/blog" class="text-sm font-semibold text-ink-400 hover:text-ink-900">← All posts</a>
+  <h1 class="mt-3 text-3xl">{isNew ? 'New post' : 'Edit post'}</h1>
+
+  {error && <p role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
+
+  <form method="post" enctype="multipart/form-data" class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <input type="hidden" name="csrf" value={csrf} />
+    <div class="space-y-5 rounded-2xl border border-ink-100 bg-white p-6 shadow-card">
+      <div>
+        <label for="title" class={label}>Title *</label>
+        <input id="title" name="title" required value={post.title} class={field} />
+      </div>
+      <div>
+        <label for="excerpt" class={label}>Short description</label>
+        <textarea id="excerpt" name="excerpt" rows="2" class={field}>{post.excerpt ?? ''}</textarea>
+        <p class="mt-1.5 text-xs text-ink-400">Shown on the blog list and in Google results.</p>
+      </div>
+      <div>
+        <label for="body" class={label}>Post</label>
+        <textarea id="body" name="body" rows="22" class={field}>{post.body}</textarea>
+        <details class="mt-2 text-sm text-ink-600">
+          <summary class="cursor-pointer font-semibold text-brand-700">Formatting help</summary>
+          <ul class="mt-2 space-y-1 pl-1 text-ink-600">
+            <li>Leave an empty line between paragraphs.</li>
+            <li><code>## Heading</code> on its own line makes a heading (<code>###</code> for a smaller one).</li>
+            <li><code>- item</code> on each line makes a bullet list.</li>
+            <li><code>**bold words**</code> makes text bold.</li>
+            <li><code>[link text](https://example.com)</code> makes a link.</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+
+    <aside class="space-y-5">
+      <div class="space-y-4 rounded-2xl border border-ink-100 bg-white p-5 shadow-card">
+        <label class="flex items-center gap-2.5 font-semibold text-ink-800">
+          <input type="checkbox" name="published" checked={post.published} class="size-4 accent-brand-700" />
+          Published
+        </label>
+        <p class="text-xs text-ink-400">Untick to keep it as a draft that only staff can see.</p>
+        <button type="submit" class="w-full rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900 disabled:opacity-50">
+          Save post
+        </button>
+      </div>
+      <div class="space-y-3 rounded-2xl border border-ink-100 bg-white p-5 shadow-card">
+        <p class={label}>Cover photo</p>
+        {cover && <img src={cover} alt="" class="aspect-16/9 w-full rounded-xl object-cover" />}
+        <input name="cover" type="file" accept="image/jpeg,image/png,image/webp" data-photo aria-label="Cover photo" class="w-full text-sm" />
+        {cover && (
+          <label class="flex items-center gap-2 text-sm text-ink-600">
+            <input type="checkbox" name="removeCover" class="accent-brand-700" /> Remove cover
+          </label>
+        )}
+      </div>
+      <div class="space-y-2 rounded-2xl border border-ink-100 bg-white p-5 shadow-card">
+        <label for="slug" class={label}>Web address</label>
+        <div class="flex items-center gap-1 text-sm text-ink-400">
+          <span>/blog/</span>
+          <input id="slug" name="slug" value={post.slug} placeholder="made from the title" class={field} />
+        </div>
+      </div>
+    </aside>
+  </form>
+</Admin>

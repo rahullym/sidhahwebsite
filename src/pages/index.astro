@@ -6,12 +6,14 @@ import PlacementCard from '../components/PlacementCard.astro';
 import Accreditations from '../components/Accreditations.astro';
 import Photo from '../components/Photo.astro';
 import EnquiryCTA from '../components/EnquiryCTA.astro';
-import { courses, addOns, addOnNote } from '../data/courses';
-import { placements, hiringHospitals } from '../data/placements';
+import { addOns, addOnNote } from '../data/courses';
+import { getCourses, getPlacements } from '../lib/server/content';
 import { contact, whatsappHref } from '../data/site';
 import { href } from '../lib/url';
 
+const [courses, placements] = await Promise.all([getCourses(), getPlacements()]);
 const featuredPlacements = placements.slice(0, 4);
+const hiringHospitals = [...new Set(placements.map((p) => p.hospital))];
 
 const whyOffline = [
   {

@@ -1,0 +1,67 @@
+---
+export const prerender = false;
+
+import Admin from '../../layouts/Admin.astro';
+import { checkCsrf, csrfToken } from '../../lib/server/auth';
+import { db } from '../../lib/server/db';
+import { deleteMedia, getPlacements } from '../../lib/server/content';
+
+const user = Astro.locals.user!;
+const csrf = csrfToken(Astro);
+let notice = Astro.url.searchParams.has('saved') ? 'Saved. The website shows the change within a minute.' : '';
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = Number(form.get('id'));
+  if (!checkCsrf(Astro, form.get('csrf'))) error = 'Your session expired. Please try again.';
+  else if (form.get('action') === 'delete' && Number.isInteger(id) && id > 0) {
+    const [row] = await db<{ name: string; photo_id: number | null }>`
+      delete from placements where id = ${id} returning name, photo_id
+    `;
+    if (row) {
+      await deleteMedia(row.photo_id);
+      notice = `Removed ${row.name}.`;
+    }
+  }
+}
+
+const placements = await getPlacements();
+---
+
+<Admin title="Placements" user={user} csrf={csrf} section="placements">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-3xl">Placements</h1>
+      <p class="mt-1.5 text-ink-400">Students shown on the home page and the Placements page. The first four appear on the home page.</p>
+    </div>
+    <a href="/admin/placements/new" class="rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white shadow-card transition hover:bg-brand-900">
+      + Add student
+    </a>
+  </div>
+
+  {error && <p role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
+  {notice && <p class="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">{notice}</p>}
+
+  <ul class="mt-6 divide-y divide-ink-100 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-card">
+    {placements.map((p) => (
+      <li class="flex flex-wrap items-center gap-4 px-5 py-4">
+        {p.photo
+          ? <img src={p.photo} alt="" class="size-14 rounded-xl object-cover object-top" />
+          : <div class="grid size-14 place-items-center rounded-xl bg-brand-50 text-xs font-bold text-brand-700">No photo</div>}
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-ink-900">{p.name}</p>
+          <p class="text-sm text-ink-400">{p.position} · {p.hospital}{p.kind === 'training' ? ' · training' : ''}</p>
+        </div>
+        <a href={`/admin/placements/${p.id}`} class="rounded-lg bg-brand-800 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-900">Edit</a>
+        <form method="post" onsubmit={`return confirm(${JSON.stringify(`Remove ${p.name} from the website?`)})`}>
+          <input type="hidden" name="csrf" value={csrf} />
+          <input type="hidden" name="action" value="delete" />
+          <input type="hidden" name="id" value={String(p.id)} />
+          <button type="submit" class="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50">Delete</button>
+        </form>
+      </li>
+    ))}
+    {placements.length === 0 && <li class="px-5 py-12 text-center text-sm text-ink-400">No students yet. Add the first one.</li>}
+  </ul>
+</Admin>

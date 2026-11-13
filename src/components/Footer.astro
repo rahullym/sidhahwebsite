@@ -2,7 +2,9 @@
 import Logo from './Logo.astro';
 import SocialIcon from './SocialIcon.astro';
 import { nav, contact, site, socials } from '../data/site';
-import { courses } from '../data/courses';
+import { getCourses } from '../lib/server/content';
+
+const courses = await getCourses();
 import { href } from '../lib/url';
 
 const year = new Date().getFullYear();

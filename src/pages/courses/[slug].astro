@@ -2,24 +2,15 @@
 import Base from '../../layouts/Base.astro';
 import SyllabusAccordion from '../../components/SyllabusAccordion.astro';
 import EnquiryCTA from '../../components/EnquiryCTA.astro';
-import { courses, chapterCount, type Course } from '../../data/courses';
+import { chapterCount } from '../../data/courses';
+import { getCourse, getCourses } from '../../lib/server/content';
 import { site, contact, whatsappHref } from '../../data/site';
 import { href } from '../../lib/url';
 
-export function getStaticPaths() {
-  return courses.map((course) => ({
-    params: { slug: course.slug },
-    props: { course },
-  }));
-}
-
-interface Props {
-  course: Course;
-}
-
-const { course } = Astro.props;
+const course = await getCourse(Astro.params.slug ?? '');
+if (!course) return Astro.rewrite('/404');
 const chapters = chapterCount(course);
-const other = courses.find((c) => c.slug !== course.slug);
+const other = (await getCourses()).find((c) => c.slug !== course.slug);
 
 const courseSchema = {
   '@context': 'https://schema.org',

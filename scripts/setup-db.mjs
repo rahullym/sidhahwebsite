@@ -78,6 +78,68 @@ for (const [name, amount] of seed) {
 }
 console.log(`  ${added} new, ${seed.length - added} already present.`);
 
+if (process.argv.includes('--content')) {
+  // One-time import of the content that used to live in src/data. Re-running is
+  // safe: a course is only filled while it has no slug (never edited), and
+  // placements and gallery are only imported into empty tables.
+  console.log('→ Importing website content…');
+  const { courses } = await import('../src/data/courses.ts');
+  const { placements } = await import('../src/data/placements.ts');
+  const { readdirSync } = await import('node:fs');
+
+  const media = async (path) => {
+    const type = path.endsWith('.png') ? 'image/png' : path.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+    const [row] = await sql.query(
+      "insert into media (content_type, data) values ($1, decode($2, 'base64')) returning id",
+      [type, readFileSync(path).toString('base64')],
+    );
+    return row.id;
+  };
+
+  for (const [i, c] of courses.entries()) {
+    await sql.query(
+      `insert into courses (name, slug, published, sort_order, short_title, duration, level, summary, intro,
+         featured, eligibility, outcomes, careers, highlights, modules)
+       values ($1, $2, true, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       on conflict ((lower(name))) do update set
+         slug = excluded.slug, published = true, sort_order = excluded.sort_order,
+         short_title = excluded.short_title, duration = excluded.duration, level = excluded.level,
+         summary = excluded.summary, intro = excluded.intro, featured = excluded.featured,
+         eligibility = excluded.eligibility, outcomes = excluded.outcomes, careers = excluded.careers,
+         highlights = excluded.highlights, modules = excluded.modules
+       where courses.slug is null`,
+      [c.title, c.slug, i, c.shortTitle, c.duration, c.level, c.summary, c.intro, c.featured,
+        JSON.stringify(c.eligibility), JSON.stringify(c.outcomes), JSON.stringify(c.careers),
+        JSON.stringify(c.highlights), JSON.stringify(c.modules)],
+    );
+  }
+  console.log(`  ${courses.length} course pages checked.`);
+
+  const [{ n: placementCount }] = await sql.query('select count(*)::int as n from placements');
+  if (placementCount === 0) {
+    for (const [i, p] of placements.entries()) {
+      const file = `${root}src/assets/placements/${p.slug}.jpg`;
+      const photoId = existsSync(file) ? await media(file) : null;
+      await sql.query(
+        `insert into placements (name, from_field, position, hospital, location, kind, program, photo_id, sort_order)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [p.name, p.from ?? null, p.position, p.hospital, p.location, p.kind, p.program, photoId, i],
+      );
+    }
+    console.log(`  ${placements.length} placements imported.`);
+  }
+
+  const [{ n: galleryCount }] = await sql.query('select count(*)::int as n from gallery');
+  if (galleryCount === 0) {
+    const dir = `${root}src/assets/gallery/`;
+    const files = readdirSync(dir).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).sort();
+    for (const [i, f] of files.entries()) {
+      await sql.query('insert into gallery (photo_id, sort_order) values ($1, $2)', [await media(dir + f), i]);
+    }
+    console.log(`  ${files.length} gallery photos imported.`);
+  }
+}
+
 if (process.argv.includes('--admin')) {
   // Flags let this run unattended (a seed step, a fresh laptop); without them it
   // prompts, so nobody has to put a password in their shell history.

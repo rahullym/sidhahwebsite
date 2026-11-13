@@ -1,15 +1,16 @@
 ---
-import { Image } from 'astro:assets';
-import { galleryImages } from '../lib/images';
+import type { GalleryPhoto } from '../lib/server/content';
 
 interface Props {
+  images: GalleryPhoto[];
+  /** Used for photos uploaded without a caption. */
   alt: string;
   /** Cap how many render; omit for all. */
   limit?: number;
 }
 
 const { alt, limit } = Astro.props;
-const images = limit ? galleryImages().slice(0, limit) : galleryImages();
+const images = limit ? Astro.props.images.slice(0, limit) : Astro.props.images;
 ---
 
 {
@@ -23,11 +24,9 @@ const images = limit ? galleryImages().slice(0, limit) : galleryImages();
             index === 0 && 'lg:col-span-2 lg:row-span-2',
           ]}
         >
-          <Image
+          <img
             src={image.src}
-            alt={alt}
-            widths={[320, 640, 960]}
-            sizes="(min-width: 1024px) 22rem, 45vw"
+            alt={image.caption || alt}
             class="h-full w-full object-cover transition-transform duration-500 motion-safe:hover:scale-105"
             loading="lazy"
           />

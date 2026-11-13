@@ -1,11 +1,11 @@
 ---
-import type { Course } from '../data/courses';
 import { chapterCount } from '../data/courses';
+import type { WebCourse } from '../lib/server/content';
 import Photo from './Photo.astro';
 import { href } from '../lib/url';
 
 interface Props {
-  course: Course;
+  course: WebCourse;
 }
 
 const { course } = Astro.props;
@@ -19,6 +19,7 @@ const chapters = chapterCount(course);
   <div class="relative">
     <Photo
       name={`course-${course.slug}`}
+      src={course.image}
       alt={`Students on the ${course.title} program`}
       ratio="aspect-21/9"
       sizes="(min-width: 1024px) 34rem, 90vw"

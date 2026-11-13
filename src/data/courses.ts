@@ -1,3 +1,7 @@
+/**
+ * Starting content only: `npm run db:seed-content` copies `courses` into the database, and the
+ * live site reads from there (edited in /admin/courses). Editing `courses` here changes nothing.
+ */
 export interface Module {
   title: string;
   /** Chapter titles in order. The chapter number is derived from position. */
@@ -248,10 +252,6 @@ export const addOns: AddOn[] = [
 
 /** Every enrolled student gets the add-on programs at no extra cost. */
 export const addOnNote = 'Included free with both diploma programs.';
-
-export function getCourse(slug: string): Course | undefined {
-  return courses.find((course) => course.slug === slug);
-}
 
 export function chapterCount(course: Course): number {
   return course.modules.reduce((total, module) => total + module.chapters.length, 0);

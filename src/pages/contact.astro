@@ -1,7 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
 import { contact, whatsappHref } from '../data/site';
-import { courses } from '../data/courses';
+import { getCourses } from '../lib/server/content';
+
+const courses = await getCourses();
 
 const channels = [
   {

@@ -91,9 +91,9 @@ DATABASE_URL="<the Neon string>" npm run db:admin
 Changing `SESSION_SECRET` later logs every staff member out — that is the fastest way to revoke
 all sessions at once.
 
-**GitHub Pages** (`.github/workflows/deploy-preview.yml`) stays a marketing-only preview. It is
-static hosting with no database, so the workflow deletes `src/pages/admin` and `src/middleware.ts`
-before building — no admin route can ever be published to a host that cannot authenticate it.
+**Content.** Courses, placements, gallery photos and blog posts live in the database and are
+edited from `/admin`. Every page renders on request with a 60-second CDN cache, so edits appear
+within a minute. Load the starting content once with `npm run db:seed-content`.
 
 Before going live, set the real domain in `astro.config.mjs` (`site:`). It feeds the canonical
 URLs, the sitemap and the JSON-LD.
