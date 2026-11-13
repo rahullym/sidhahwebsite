@@ -3,7 +3,7 @@ export const prerender = false;
 
 import Admin from '../../../layouts/Admin.astro';
 import { csrfToken } from '../../../lib/server/auth';
-import { getInvoice } from '../../../lib/server/invoices';
+import { feeSummary, getInvoice } from '../../../lib/server/invoices';
 import { amountInWords, formatDate, formatDateTime, formatPhone, formatRupees } from '../../../lib/format';
 import { site } from '../../../data/site';
 
@@ -24,12 +24,19 @@ const whatsappMessage =
   `for ${invoice.course_name} — ${formatRupees(invoice.amount)}. Thank you!`;
 const whatsappHref = `https://wa.me/${invoice.student_phone}?text=${encodeURIComponent(whatsappMessage)}`;
 
+const fees = feeSummary(invoice);
 const rows = [
   { label: 'Invoice number', value: invoice.invoice_no, mono: true },
   { label: 'Invoice date', value: formatDate(invoice.invoice_date) },
+  ...(invoice.student_code ? [{ label: 'Student ID', value: invoice.student_code, mono: true }] : []),
   { label: 'Course', value: invoice.course_name },
-  { label: 'Amount', value: formatRupees(invoice.amount) },
-  { label: 'In words', value: amountInWords(invoice.amount) },
+  { label: 'Course fee', value: formatRupees(fees.fee) },
+  ...(fees.discount > 0 ? [{ label: 'Discount', value: formatRupees(fees.discount) }] : []),
+  ...(fees.previous > 0 ? [{ label: 'Paid earlier', value: formatRupees(fees.previous) }] : []),
+  { label: 'Paid now', value: formatRupees(fees.paid) },
+  { label: 'In words', value: amountInWords(fees.paid) },
+  ...(invoice.payment_method ? [{ label: 'Method', value: invoice.payment_method }] : []),
+  { label: 'Balance', value: formatRupees(fees.balance) },
   ...(invoice.notes ? [{ label: 'Note', value: invoice.notes }] : []),
   { label: 'Issued by', value: `${invoice.created_by_name} · ${formatDateTime(invoice.created_at)}` },
 ];

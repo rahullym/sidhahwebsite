@@ -5,7 +5,9 @@ import Admin from '../../../layouts/Admin.astro';
 import { checkCsrf, csrfToken } from '../../../lib/server/auth';
 import {
   createInvoice,
+  InvoiceRejected,
   listCourses,
+  PAYMENT_METHODS,
   readInvoiceForm,
   validateInvoice,
   type Errors,
@@ -22,7 +24,11 @@ let form: InvoiceInput = {
   phone: '',
   email: '',
   address: '',
+  studentCode: '',
+  paymentMethod: '',
   courseId: '',
+  courseFee: '',
+  discount: '',
   amount: '',
   invoiceDate: todayInIndia(),
   notes: '',
@@ -44,8 +50,11 @@ if (Astro.request.method === 'POST') {
         // the invoice — and the number in the URL is the permanent record.
         return Astro.redirect(`/admin/invoices/${invoice.id}?created=1`, 303);
       } catch (error) {
-        console.error('Invoice creation failed', error);
-        failure = 'Could not save the invoice. Please try again.';
+        if (error instanceof InvoiceRejected) errors = error.errors;
+        else {
+          console.error('Invoice creation failed', error);
+          failure = 'Could not save the invoice. Please try again.';
+        }
       }
     }
   }
@@ -58,7 +67,7 @@ const bad = 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-100';
 const label = 'mb-1.5 block text-sm font-semibold text-ink-800';
 const hint = 'mt-1.5 text-sm font-medium text-red-700';
 
-/** Prefills the amount box when a course has a standard fee, without locking it. */
+/** Prefills the course fee box when a course has a standard fee, without locking it. */
 const courseAmounts = Object.fromEntries(
   courses.filter((c) => c.default_amount).map((c) => [String(c.id), Number(c.default_amount).toFixed(2)]),
 );
@@ -94,7 +103,7 @@ const courseAmounts = Object.fromEntries(
       <h2 class="text-lg">Student information</h2>
 
       <div class="mt-5 grid gap-5 sm:grid-cols-2">
-        <div class="sm:col-span-2">
+        <div>
           <label for="studentName" class={label}>Student name *</label>
           <input
             id="studentName"
@@ -106,6 +115,29 @@ const courseAmounts = Object.fromEntries(
             class:list={[field, errors.studentName ? bad : ok]}
           />
           {errors.studentName && <p id="studentName-error" class={hint}>{errors.studentName}</p>}
+        </div>
+
+        <div>
+          <label for="studentCode" class={label}>Student ID</label>
+          <input
+            id="studentCode"
+            name="studentCode"
+            value={form.studentCode}
+            autocomplete="off"
+            placeholder="Leave blank to generate"
+            aria-invalid={errors.studentCode ? 'true' : undefined}
+            aria-describedby={errors.studentCode ? 'studentCode-error' : 'studentCode-hint'}
+            class:list={[field, errors.studentCode ? bad : ok]}
+          />
+          {
+            errors.studentCode ? (
+              <p id="studentCode-error" class={hint}>{errors.studentCode}</p>
+            ) : (
+              <p id="studentCode-hint" class="mt-1.5 text-xs text-ink-400">
+                New students get the next ID (STU-00001…). Returning students keep theirs.
+              </p>
+            )
+          }
         </div>
 
         <div>
@@ -158,7 +190,7 @@ const courseAmounts = Object.fromEntries(
     </section>
 
     <section class="rounded-2xl border border-ink-100 bg-white p-6 shadow-card">
-      <h2 class="text-lg">Course &amp; amount</h2>
+      <h2 class="text-lg">Course &amp; fees</h2>
 
       <div class="mt-5 grid gap-5 sm:grid-cols-2">
         <div>
@@ -182,7 +214,41 @@ const courseAmounts = Object.fromEntries(
         </div>
 
         <div>
-          <label for="amount" class={label}>Amount (₹) *</label>
+          <label for="courseFee" class={label}>Course fee (₹) *</label>
+          <input
+            id="courseFee"
+            name="courseFee"
+            inputmode="decimal"
+            value={form.courseFee}
+            placeholder="125000"
+            aria-invalid={errors.courseFee ? 'true' : undefined}
+            class:list={[field, errors.courseFee ? bad : ok]}
+          />
+          {errors.courseFee && <p class={hint}>{errors.courseFee}</p>}
+        </div>
+
+        <div>
+          <label for="discount" class={label}>Discount</label>
+          <input
+            id="discount"
+            name="discount"
+            value={form.discount}
+            placeholder="5000 or 10%"
+            aria-invalid={errors.discount ? 'true' : undefined}
+            aria-describedby={errors.discount ? undefined : 'discount-hint'}
+            class:list={[field, errors.discount ? bad : ok]}
+          />
+          {
+            errors.discount ? (
+              <p class={hint}>{errors.discount}</p>
+            ) : (
+              <p id="discount-hint" class="mt-1.5 text-xs text-ink-400">Rupees, or a percentage of the fee.</p>
+            )
+          }
+        </div>
+
+        <div>
+          <label for="amount" class={label}>Payment amount (₹) *</label>
           <input
             id="amount"
             name="amount"
@@ -191,9 +257,32 @@ const courseAmounts = Object.fromEntries(
             value={form.amount}
             placeholder="25000"
             aria-invalid={errors.amount ? 'true' : undefined}
+            aria-describedby={errors.amount ? undefined : 'amount-hint'}
             class:list={[field, errors.amount ? bad : ok]}
           />
-          {errors.amount && <p class={hint}>{errors.amount}</p>}
+          {
+            errors.amount ? (
+              <p class={hint}>{errors.amount}</p>
+            ) : (
+              <p id="amount-hint" class="mt-1.5 text-xs text-ink-400">
+                What the student is paying now. Earlier payments for this course are deducted from the balance automatically.
+              </p>
+            )
+          }
+        </div>
+
+        <div>
+          <label for="paymentMethod" class={label}>Payment method *</label>
+          <select
+            id="paymentMethod"
+            name="paymentMethod"
+            aria-invalid={errors.paymentMethod ? 'true' : undefined}
+            class:list={[field, errors.paymentMethod ? bad : ok, 'bg-white']}
+          >
+            <option value="">Select…</option>
+            {PAYMENT_METHODS.map((m) => <option selected={form.paymentMethod === m}>{m}</option>)}
+          </select>
+          {errors.paymentMethod && <p class={hint}>{errors.paymentMethod}</p>}
         </div>
 
         <div>
@@ -247,10 +336,10 @@ const courseAmounts = Object.fromEntries(
 
 <script is:inline define:vars={{ courseAmounts }}>
   const course = document.getElementById('courseId');
-  const amount = document.getElementById('amount');
+  const fee = document.getElementById('courseFee');
   course?.addEventListener('change', () => {
     const preset = courseAmounts[course.value];
     // Never overwrite a figure the staff member has already typed.
-    if (preset && !amount.value.trim()) amount.value = preset;
+    if (preset && !fee.value.trim()) fee.value = preset;
   });
 </script>

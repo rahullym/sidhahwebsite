@@ -15,7 +15,8 @@ const INVOICE_COLUMNS = new UnsafeRawSql(`
   id, invoice_no, year, seq, student_id, course_id,
   student_name, student_phone, student_email, student_address,
   course_name, amount, notes, invoice_date::text as invoice_date,
-  created_by, created_by_name, created_at
+  created_by, created_by_name, created_at,
+  student_code, payment_method, course_fee, discount, previous_paid
 `);
 
 export interface Course {
@@ -38,6 +39,25 @@ export interface Invoice {
   invoice_date: string;
   created_by_name: string;
   created_at: string;
+  /** Null on invoices issued before the fee breakdown existed. */
+  student_code: string | null;
+  payment_method: string | null;
+  course_fee: string | null;
+  discount: string | null;
+  previous_paid: string | null;
+}
+
+export const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank transfer', 'Card', 'Cheque'];
+
+/** Fee breakdown; old invoices read as fee = amount paid, nothing outstanding. */
+export function feeSummary(invoice: Invoice) {
+  const paid = Number(invoice.amount);
+  const fee = invoice.course_fee === null ? paid : Number(invoice.course_fee);
+  const discount = Number(invoice.discount ?? 0);
+  const previous = Number(invoice.previous_paid ?? 0);
+  // Rounded to paise so 0.1 + 0.2 style float noise never prints as a balance.
+  const balance = Math.round((fee - discount - previous - paid) * 100) / 100;
+  return { fee, discount, previous, paid, balance };
 }
 
 /* ----------------------------------------------------------------- courses */
@@ -55,7 +75,11 @@ export interface InvoiceInput {
   phone: string;
   email: string;
   address: string;
+  studentCode: string;
+  paymentMethod: string;
   courseId: string;
+  courseFee: string;
+  discount: string;
   amount: string;
   invoiceDate: string;
   notes: string;
@@ -76,7 +100,11 @@ export function readInvoiceForm(form: FormData): InvoiceInput {
     phone: get('phone'),
     email: get('email'),
     address: get('address'),
+    studentCode: get('studentCode'),
+    paymentMethod: get('paymentMethod'),
     courseId: get('courseId'),
+    courseFee: get('courseFee'),
+    discount: get('discount'),
     amount: get('amount'),
     invoiceDate: get('invoiceDate'),
     notes: get('notes'),
@@ -100,8 +128,22 @@ export function validateInvoice(input: InvoiceInput, courses: Course[]): Errors 
   if (!input.courseId) errors.courseId = 'Select a course.';
   else if (!courses.some((c) => String(c.id) === input.courseId)) errors.courseId = 'That course is no longer available.';
 
+  if (input.studentCode && !/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,39}$/.test(input.studentCode)) {
+    errors.studentCode = 'Use letters, numbers, dash, dot or slash (up to 40), or leave blank to generate one.';
+  }
+
+  if (!PAYMENT_METHODS.includes(input.paymentMethod)) errors.paymentMethod = 'Select how the student paid.';
+
+  const feeError = checkAmount(input.courseFee);
+  if (!input.courseFee) errors.courseFee = 'Course fee is required.';
+  else if (feeError) errors.courseFee = feeError;
+
+  if (input.discount && !feeError && resolveDiscount(input.discount, input.courseFee) === null) {
+    errors.discount = 'Enter a rupee amount (5000) or a percentage (10%) no larger than the course fee.';
+  }
+
   const amountError = checkAmount(input.amount);
-  if (!input.amount) errors.amount = 'Amount is required.';
+  if (!input.amount) errors.amount = 'Payment amount is required.';
   else if (amountError) errors.amount = amountError;
 
   if (!isValidDate(input.invoiceDate)) errors.invoiceDate = 'Enter a valid date.';
@@ -122,24 +164,49 @@ export function checkAmount(raw: string): string | null {
   return null;
 }
 
+/**
+ * "5000" or "10%" of the fee, as a rupee string. Null when it is not a valid
+ * discount or exceeds the fee. Blank means no discount.
+ */
+export function resolveDiscount(raw: string, courseFee: string): string | null {
+  const fee = Number(parseAmount(courseFee));
+  if (!raw.trim()) return '0.00';
+  const percent = /^\s*(\d+(?:\.\d{1,2})?)\s*%\s*$/.exec(raw);
+  const value = percent ? Math.round(fee * Number(percent[1])) / 100 : Number(parseAmount(raw) ?? NaN);
+  if (!Number.isFinite(value) || value < 0 || value > fee) return null;
+  return value.toFixed(2);
+}
+
 /* --------------------------------------------------------------- creation */
 
 /**
  * Upsert on phone: the same student enrolling in a second course reuses their
  * record instead of creating a duplicate, and the newest details win.
  */
-async function upsertStudent(input: InvoiceInput, phone: string): Promise<number> {
-  const row = await one<{ id: number }>(db`
-    insert into students (name, phone, email, address)
-    values (${input.studentName}, ${phone}, ${input.email || null}, ${input.address || null})
+async function upsertStudent(input: InvoiceInput, phone: string): Promise<{ id: number; code: string }> {
+  const row = await one<{ id: number; student_code: string | null }>(db`
+    insert into students (name, phone, email, address, student_code)
+    values (${input.studentName}, ${phone}, ${input.email || null}, ${input.address || null}, ${input.studentCode || null})
     on conflict (phone) do update set
       name = excluded.name,
       email = coalesce(excluded.email, students.email),
       address = coalesce(excluded.address, students.address),
+      student_code = coalesce(excluded.student_code, students.student_code),
       updated_at = now()
-    returning id
+    returning id, student_code
   `);
-  return row!.id;
+  if (row!.student_code) return { id: row!.id, code: row!.student_code };
+  // New student with no ID typed: derive one from the row id, which is unique by construction.
+  const code = `STU-${String(row!.id).padStart(5, '0')}`;
+  await db`update students set student_code = ${code} where id = ${row!.id}`;
+  return { id: row!.id, code };
+}
+
+/** Field errors that need the database to detect: a taken Student ID, an overpayment. */
+export class InvoiceRejected extends Error {
+  constructor(public errors: Errors) {
+    super('Invoice rejected');
+  }
 }
 
 /**
@@ -152,13 +219,38 @@ export async function createInvoice(
   user: { id: number; fullName: string },
 ): Promise<Invoice> {
   const phone = normalisePhone(input.phone)!;
-  const studentId = await upsertStudent(input, phone);
   const courseId = Number(input.courseId);
   const course = await one<{ name: string }>(db`select name from courses where id = ${courseId}`);
   if (!course) throw new Error('Course not found');
 
-  const year = Number(input.invoiceDate.slice(0, 4));
+  if (input.studentCode) {
+    const owner = await one<{ phone: string }>(
+      db`select phone from students where lower(student_code) = lower(${input.studentCode})`,
+    );
+    if (owner && owner.phone !== phone) {
+      throw new InvoiceRejected({ studentCode: 'This Student ID already belongs to another student.' });
+    }
+  }
+
+  const existing = await one<{ id: number }>(db`select id from students where phone = ${phone}`);
+  const fee = parseAmount(input.courseFee)!;
+  const discount = resolveDiscount(input.discount, input.courseFee)!;
   const amount = parseAmount(input.amount)!;
+  const [{ paid }] = existing
+    ? await db<{ paid: string }>`
+        select coalesce(sum(amount), 0)::text as paid from invoices
+        where student_id = ${existing.id} and course_id = ${courseId}`
+    : [{ paid: '0' }];
+  const due = Math.round((Number(fee) - Number(discount) - Number(paid)) * 100) / 100;
+  if (Number(amount) > due) {
+    throw new InvoiceRejected({
+      amount: `This is more than the balance due of ₹${due.toFixed(2)}` +
+        (Number(paid) > 0 ? ` (₹${paid} already paid for this course).` : '.'),
+    });
+  }
+
+  const student = await upsertStudent(input, phone);
+  const year = Number(input.invoiceDate.slice(0, 4));
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -169,14 +261,16 @@ export async function createInvoice(
         insert into invoices (
           invoice_no, year, seq, student_id, course_id,
           student_name, student_phone, student_email, student_address,
-          course_name, amount, notes, invoice_date, created_by, created_by_name
+          course_name, amount, notes, invoice_date, created_by, created_by_name,
+          student_code, payment_method, course_fee, discount, previous_paid
         )
         select
           'SID-' || ${year} || '-' || lpad(next.seq::text, 5, '0'),
-          ${year}, next.seq, ${studentId}, ${courseId},
+          ${year}, next.seq, ${student.id}, ${courseId},
           ${input.studentName}, ${phone}, ${input.email || null}, ${input.address || null},
           ${course.name}, ${amount}, ${input.notes || null}, ${input.invoiceDate},
-          ${user.id}, ${user.fullName}
+          ${user.id}, ${user.fullName},
+          ${student.code}, ${input.paymentMethod}, ${fee}, ${discount}, ${paid}
         from next
         returning ${INVOICE_COLUMNS}
       `);
@@ -233,6 +327,7 @@ export async function searchInvoices(params: SearchParams): Promise<{
     where (${like}::text is null
         or lower(student_name) like ${like}
         or lower(invoice_no) like ${like}
+        or lower(student_code) like ${like}
         or (${phoneLike}::text is not null and student_phone like ${phoneLike}))
       and (${from}::date is null or invoice_date >= ${from}::date)
       and (${to}::date is null or invoice_date <= ${to}::date)

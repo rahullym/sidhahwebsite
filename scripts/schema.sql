@@ -66,3 +66,14 @@ create index if not exists invoices_created_at_idx on invoices (created_at desc)
 create index if not exists invoices_date_idx on invoices (invoice_date desc);
 create index if not exists invoices_student_name_idx on invoices (lower(student_name));
 create index if not exists invoices_student_phone_idx on invoices (student_phone);
+
+-- Student invoice v2: student ID, payment method and fee breakdown.
+-- Older invoices keep these null and print as a plain one-line invoice.
+alter table students add column if not exists student_code text;
+create unique index if not exists students_code_key on students (lower(student_code));
+alter table invoices add column if not exists student_code text;
+alter table invoices add column if not exists payment_method text;
+alter table invoices add column if not exists course_fee numeric(12, 2);
+alter table invoices add column if not exists discount numeric(12, 2);
+-- Sum of earlier invoices for the same student and course, frozen at issue time.
+alter table invoices add column if not exists previous_paid numeric(12, 2);

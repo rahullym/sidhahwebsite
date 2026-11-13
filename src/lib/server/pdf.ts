@@ -5,7 +5,7 @@ import interBold from '../../assets/fonts/Inter-Bold.subset.ttf?inline';
 import logoPng from '../../assets/logos/sidhah-logo-pdf.png?inline';
 import { contact, site } from '../../data/site';
 import { amountInWords, formatAmount, formatDate, formatPhone, printable } from '../format';
-import type { Invoice } from './invoices';
+import { feeSummary, type Invoice } from './invoices';
 
 /**
  * Assets are inlined as data URIs at build time rather than read from disk at
@@ -140,7 +140,7 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   page.drawImage(logo, { x: MARGIN, y: PAGE_H - 68 - logoH / 2, width: logoW, height: logoH });
 
   const right = PAGE_W - MARGIN;
-  text(ctx, 'INVOICE', right, PAGE_H - 56, { size: 26, bold: true, color: WHITE, align: 'right' });
+  text(ctx, 'STUDENT INVOICE', right, PAGE_H - 56, { size: 22, bold: true, color: WHITE, align: 'right' });
   text(ctx, invoice.invoice_no, right, PAGE_H - 76, { size: 11, bold: true, color: rgb(0.85, 0.88, 1), align: 'right' });
   text(ctx, formatDate(invoice.invoice_date), right, PAGE_H - 92, { size: 9.5, color: rgb(0.78, 0.82, 0.98), align: 'right' });
 
@@ -172,7 +172,8 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
     ? wrapLines(regular, clean(invoice.student_address), 8.5, innerW).length
     : 0;
   const contentH =
-    20 + 16 + nameLines * nameLeading - 2 + addressLines * addressLeading + 2 + (invoice.student_email ? 12 : 0);
+    20 + 16 + nameLines * nameLeading - 2 + (invoice.student_code ? 12 : 0) +
+    addressLines * addressLeading + 2 + (invoice.student_email ? 12 : 0);
   const boxH = Math.max(104, contentH + 16);
   page.drawRectangle({ x: boxX, y: boxTop - boxH, width: boxW, height: boxH, color: TINT });
   page.drawRectangle({ x: boxX, y: boxTop - boxH, width: 3, height: boxH, color: AZURE });
@@ -181,6 +182,10 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   text(ctx, 'INVOICE TO', boxX + 16, by, { size: 8, bold: true, color: AZURE });
   by -= 16;
   by = wrapped(ctx, clean(invoice.student_name), boxX + 16, by, innerW, { size: nameSize, bold: true }) + 2;
+  if (invoice.student_code) {
+    text(ctx, `Student ID: ${clean(invoice.student_code)}`, boxX + 16, by, { size: 8.5, bold: true, color: AZURE });
+    by -= 12;
+  }
   if (invoice.student_address) {
     by = wrapped(ctx, clean(invoice.student_address), boxX + 16, by, innerW, { size: 8.5, color: INK_SOFT, leading: addressLeading });
   }
@@ -217,7 +222,8 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
     leading: courseLeading,
   });
   text(ctx, 'Course fee', descX, afterCourse + courseLeading - 13, { size: 8.5, color: INK_SOFT });
-  text(ctx, formatAmount(invoice.amount), amountX, y - 24, { size: 11, bold: true, align: 'right' });
+  const fees = feeSummary(invoice);
+  text(ctx, formatAmount(fees.fee), amountX, y - 24, { size: 11, bold: true, align: 'right' });
   y -= rowH;
 
   /* ------------------------------------------------------------- totals */
@@ -230,22 +236,37 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
     thickness: 0.75,
     color: RULE,
   });
-  text(ctx, 'Subtotal', totalsX + 14, y - 34, { size: 9.5, color: INK_SOFT });
-  text(ctx, formatAmount(invoice.amount), amountX, y - 34, { size: 9.5, align: 'right' });
+  const rows: [string, string][] = [['Course fee', formatAmount(fees.fee)]];
+  if (fees.discount > 0) rows.push(['Discount', `- ${formatAmount(fees.discount)}`]);
+  if (fees.previous > 0) rows.push(['Previously paid', `- ${formatAmount(fees.previous)}`]);
+  let ty = y - 34;
+  for (const [label, value] of rows) {
+    text(ctx, label, totalsX + 14, ty, { size: 9.5, color: INK_SOFT });
+    text(ctx, value, amountX, ty, { size: 9.5, align: 'right' });
+    ty -= 16;
+  }
 
-  page.drawRectangle({ x: totalsX, y: y - 74, width: totalsW, height: 30, color: INDIGO });
-  text(ctx, 'TOTAL', totalsX + 14, y - 64, { size: 10, bold: true, color: WHITE });
-  text(ctx, `₹${formatAmount(invoice.amount)}`, amountX, y - 65, { size: 13, bold: true, color: WHITE, align: 'right' });
+  const bandTop = ty + 6;
+  page.drawRectangle({ x: totalsX, y: bandTop - 30, width: totalsW, height: 30, color: INDIGO });
+  text(ctx, 'AMOUNT PAID', totalsX + 14, bandTop - 20, { size: 10, bold: true, color: WHITE });
+  text(ctx, `₹${formatAmount(fees.paid)}`, amountX, bandTop - 21, { size: 13, bold: true, color: WHITE, align: 'right' });
+  ty = bandTop - 48;
+  text(ctx, 'Balance amount', totalsX + 14, ty, { size: 10, bold: true });
+  text(ctx, `₹${formatAmount(fees.balance)}`, amountX, ty, { size: 10, bold: true, align: 'right' });
 
-  /* Amount in words sits on the left, level with the total. */
+  /* Amount in words and payment method sit on the left, level with the totals. */
   text(ctx, 'AMOUNT IN WORDS', MARGIN, y - 34, { size: 8, bold: true, color: AZURE });
-  wrapped(ctx, amountInWords(invoice.amount), MARGIN, y - 48, totalsX - MARGIN - 24, {
+  let ly = wrapped(ctx, amountInWords(fees.paid), MARGIN, y - 48, totalsX - MARGIN - 24, {
     size: 9,
     bold: true,
     leading: 12,
   });
+  if (invoice.payment_method) {
+    text(ctx, 'PAYMENT METHOD', MARGIN, ly - 10, { size: 8, bold: true, color: AZURE });
+    ly = wrapped(ctx, clean(invoice.payment_method), MARGIN, ly - 24, totalsX - MARGIN - 24, { size: 9, bold: true });
+  }
 
-  y -= 74;
+  y = Math.min(ty - 6, ly);
 
   /* ---------------------------------------------------------------- notes */
   if (invoice.notes) {
@@ -264,11 +285,10 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
     thickness: 0.75,
     color: RULE,
   });
-  text(ctx, 'PAYMENT & TERMS', MARGIN, termsY + 8, { size: 8, bold: true, color: AZURE });
+  text(ctx, 'TERMS & CONDITIONS', MARGIN, termsY + 8, { size: 8, bold: true, color: AZURE });
   wrapped(
     ctx,
-    'This invoice is issued against admission to the programme named above. Course fees once paid are ' +
-      'non-refundable and non-transferable. Please quote the invoice number in all correspondence. ' +
+    'No cash refund policy for this product. Please quote the invoice number in all correspondence. ' +
       'This is a computer-generated invoice and is valid without a signature.',
     MARGIN,
     termsY - 6,
